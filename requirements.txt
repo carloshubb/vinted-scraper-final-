@@ -16,7 +16,6 @@
 # fpdf2==2.7.6
 # reportlab==4.0.7
 
-
 pip>=25.0
 setuptools>=68.0.0
 wheel>=0.41.2
@@ -24,3 +23,4 @@ streamlit>=1.39.0
 pandas>=2.2.2
 numpy>=1.26.0
 requests>=2.32.3
+plotly>=5.22.0
