@@ -68,15 +68,15 @@ if listings_df is None:
     st.stop()
 
 # Sidebar navigation
-st.sidebar.title("📊 Navigation")
+st.sidebar.title("Navigation")
 page = st.sidebar.radio(
     "Select Page",
-    ["🏠 Overview", "📈 Brand·Category Analysis", "🧮 Price Calculator", "📥 Downloads"],
+    ["Overview", "Brand·Category Analysis", "Price Calculator", "Downloads"],
     label_visibility="collapsed"
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📊 Data Summary")
+st.sidebar.markdown("### Data Summary")
 st.sidebar.metric("Total Listings", f"{len(listings_df):,}")
 st.sidebar.metric("Active Items", f"{len(listings_df[listings_df['status'] == 'active']):,}")
 st.sidebar.metric("Sold Items", f"{len(sold_events_df):,}")
@@ -91,7 +91,7 @@ if 'scrape_timestamp' in listings_df.columns:
 # PAGE 1: OVERVIEW - LIQUIDITY RANKING
 # ============================================================================
 
-if page == "🏠 Overview":
+if page == "Overview":
     st.markdown('<p class="main-header">Market Overview - Liquidity Ranking</p>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -123,7 +123,7 @@ if page == "🏠 Overview":
         liquidity_df = pd.DataFrame(liquidity_data).sort_values('Liquidity Score', ascending=False)
         
         # Display as table with color coding
-        st.subheader("🏆 Brand Liquidity Ranking")
+        st.subheader("Brand Liquidity Ranking")
         
         col1, col2 = st.columns([2, 1])
         
@@ -143,7 +143,7 @@ if page == "🏠 Overview":
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
         
         with col2:
-            st.markdown("### 📖 Grade Legend")
+            st.markdown("### Grade Legend")
             st.markdown("""
             - **A (75-100)**: Excellent liquidity
             - **B (50-74)**: Good liquidity
@@ -157,7 +157,7 @@ if page == "🏠 Overview":
         
         # Visualization
         st.markdown("---")
-        st.subheader("📊 Liquidity Score Comparison")
+        st.subheader("Liquidity Score Comparison")
         
         fig = go.Figure()
         
@@ -186,14 +186,14 @@ if page == "🏠 Overview":
         
         # Key insights
         st.markdown("---")
-        st.subheader("💡 Key Insights")
+        st.subheader(" Key Insights")
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
             top_brand = liquidity_df.iloc[0]
             st.metric(
-                "🥇 Most Liquid Brand",
+                " Most Liquid Brand",
                 top_brand['Brand'],
                 f"Score: {top_brand['Liquidity Score']:.1f}"
             )
@@ -201,7 +201,7 @@ if page == "🏠 Overview":
         with col2:
             fastest_dts = liquidity_df.loc[liquidity_df['DTS (days)'].idxmin()]
             st.metric(
-                "⚡ Fastest Selling",
+                " Fastest Selling",
                 fastest_dts['Brand'],
                 f"{fastest_dts['DTS (days)']:.1f} days"
             )
@@ -209,7 +209,7 @@ if page == "🏠 Overview":
         with col3:
             best_sellthrough = liquidity_df.loc[liquidity_df['Sell-Through 30d (%)'].idxmax()]
             st.metric(
-                "🎯 Best Sell-Through",
+                " Best Sell-Through",
                 best_sellthrough['Brand'],
                 f"{best_sellthrough['Sell-Through 30d (%)']:.1f}%"
             )
@@ -221,7 +221,7 @@ if page == "🏠 Overview":
 # PAGE 2: BRAND·CATEGORY ANALYSIS
 # ============================================================================
 
-elif page == "📈 Brand·Category Analysis":
+elif page == "Brand·Category Analysis":
     st.markdown('<p class="main-header">Brand·Category Deep Dive</p>', unsafe_allow_html=True)
     
     # Filters
@@ -268,43 +268,43 @@ elif page == "📈 Brand·Category Analysis":
     with col1:
         if kpis['dts']:
             st.metric(
-                "📅 Days to Sell (Median)",
+                "Days to Sell (Median)",
                 f"{kpis['dts']['median']:.1f} days",
                 f"Range: {kpis['dts']['p25']:.0f}-{kpis['dts']['p75']:.0f}d"
             )
         else:
-            st.metric("📅 Days to Sell", "N/A", "Need sold items")
+            st.metric("Days to Sell", "N/A", "Need sold items")
     
     with col2:
         if kpis['sell_through_30d']:
             st.metric(
-                "📈 30-Day Sell-Through",
+                "30-Day Sell-Through",
                 f"{kpis['sell_through_30d']['percentage']:.1f}%",
                 f"{kpis['sell_through_30d']['sold_30d']} / {kpis['sell_through_30d']['total_sold']}"
             )
         else:
-            st.metric("📈 Sell-Through", "N/A", "Need sold items")
+            st.metric("Sell-Through", "N/A", "Need sold items")
     
     with col3:
         if kpis['price_distribution']:
             st.metric(
-                "💰 Median Price",
+                "Median Price",
                 f"€{kpis['price_distribution']['p50']:.2f}",
                 f"Range: €{kpis['price_distribution']['p25']:.0f}-€{kpis['price_distribution']['p75']:.0f}"
             )
         else:
-            st.metric("💰 Median Price", "N/A")
+            st.metric("Median Price", "N/A")
     
     with col4:
         if kpis['liquidity']:
             grade_class = f"liquidity-{kpis['liquidity']['grade'].lower()}"
             st.metric(
-                "🌊 Liquidity Score",
+                "Liquidity Score",
                 f"{kpis['liquidity']['score']:.1f}",
                 f"Grade: {kpis['liquidity']['grade']}"
             )
         else:
-            st.metric("🌊 Liquidity", "N/A", "Need sold items")
+            st.metric("Liquidity", "N/A", "Need sold items")
     
     st.markdown("---")
     
@@ -323,7 +323,7 @@ elif page == "📈 Brand·Category Analysis":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 Price Distribution by Status")
+        st.subheader("Price Distribution by Status")
         
         if len(filtered_df) > 0:
             # Box plot
@@ -349,7 +349,7 @@ elif page == "📈 Brand·Category Analysis":
             st.info("No data matching filters")
     
     with col2:
-        st.subheader("📈 Sales Velocity Metrics")
+        st.subheader("Sales Velocity Metrics")
         
         if kpis['dts'] and kpis['sell_through_30d']:
             # Create metrics bar chart
@@ -385,7 +385,7 @@ elif page == "📈 Brand·Category Analysis":
     
     # Price distribution histogram
     st.markdown("---")
-    st.subheader("💰 Detailed Price Distribution")
+    st.subheader("Detailed Price Distribution")
     
     if len(filtered_df) > 0:
         fig = px.histogram(
@@ -402,7 +402,7 @@ elif page == "📈 Brand·Category Analysis":
     
     # Data table
     st.markdown("---")
-    st.subheader("📋 Item Listings")
+    st.subheader("Item Listings")
     
     display_cols = ['brand_norm', 'category_norm', 'title', 'price', 'condition_bucket', 'status', 'season']
     display_cols = [col for col in display_cols if col in filtered_df.columns]
@@ -417,7 +417,7 @@ elif page == "📈 Brand·Category Analysis":
 # PAGE 3: PRICE CALCULATOR
 # ============================================================================
 
-elif page == "🧮 Price Calculator":
+elif page == "Price Calculator":
     st.markdown('<p class="main-header">Smart Price Calculator</p>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -430,7 +430,7 @@ elif page == "🧮 Price Calculator":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("🔧 Item Details")
+        st.subheader(" Item Details")
         
         calc_brand = st.selectbox(
             "Brand",
@@ -458,7 +458,7 @@ elif page == "🧮 Price Calculator":
             calc_season = None
     
     with col2:
-        st.subheader("📊 Market Data")
+        st.subheader(" Market Data")
         
         # Calculate KPIs for selected combination
         calc_kpis = calculate_all_kpis(
@@ -472,7 +472,7 @@ elif page == "🧮 Price Calculator":
             st.success(f"✓ Found {calc_kpis['price_distribution']['count']} comparable items")
             
             # Show price range
-            st.markdown("### 💰 Recommended Price Range")
+            st.markdown("###  Recommended Price Range")
             
             p25 = calc_kpis['price_distribution']['p25']
             p50 = calc_kpis['price_distribution']['p50']
@@ -488,7 +488,7 @@ elif page == "🧮 Price Calculator":
                 st.metric("Premium Price", f"€{p75:.2f}", "75th percentile")
             
             # Show time to sell
-            st.markdown("### ⏱️ Estimated Time to Sell")
+            st.markdown("###  Estimated Time to Sell")
             
             if calc_kpis['dts']:
                 dts_median = calc_kpis['dts']['median']
@@ -502,14 +502,14 @@ elif page == "🧮 Price Calculator":
                 """)
                 
                 # Recommendations
-                st.markdown("### 💡 Pricing Strategy")
+                st.markdown("###  Pricing Strategy")
                 
                 if dts_median < 10:
-                    st.success("🔥 High demand! You can price at the premium range.")
+                    st.success(" High demand! You can price at the premium range.")
                 elif dts_median < 20:
-                    st.info("✅ Good demand. Market price recommended.")
+                    st.info(" Good demand. Market price recommended.")
                 else:
-                    st.warning("⚠️ Slower sales. Consider budget pricing for faster turnover.")
+                    st.warning(" Slower sales. Consider budget pricing for faster turnover.")
             
             else:
                 st.warning("Not enough sold items data for time-to-sell estimates")
@@ -520,7 +520,7 @@ elif page == "🧮 Price Calculator":
     st.markdown("---")
     
     # Advanced calculator
-    st.subheader("🎯 Custom Price Estimator")
+    st.subheader(" Custom Price Estimator")
     
     col1, col2, col3 = st.columns(3)
     
@@ -573,7 +573,7 @@ elif page == "🧮 Price Calculator":
 # PAGE 4: DOWNLOADS
 # ============================================================================
 
-elif page == "📥 Downloads":
+elif page == "Downloads":
     st.markdown('<p class="main-header">Export Data & Reports</p>', unsafe_allow_html=True)
     
     st.markdown("Download data and reports for further analysis.")
@@ -583,7 +583,7 @@ elif page == "📥 Downloads":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 CSV Exports")
+        st.subheader(" CSV Exports")
         
         # Listings export
         st.markdown("### Active Listings")
@@ -622,7 +622,7 @@ elif page == "📥 Downloads":
             st.info(f"{len(price_events_df):,} price changes")
     
     with col2:
-        st.subheader("📄 Summary Reports")
+        st.subheader(" Summary Reports")
         
         # KPI Summary
         st.markdown("### KPI Summary Report")
