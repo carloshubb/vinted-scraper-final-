@@ -1,0 +1,13 @@
+# Core dependencies for Vinted scraping and processing
+playwright==1.40.0
+pandas==2.1.4
+pyarrow==14.0.1
+numpy==1.26.2
+
+# Stage 4: Dashboard dependencies
+streamlit==1.29.0
+plotly==5.18.0
+
+# Future: PDF export (uncomment when needed)
+# fpdf2==2.7.6
+# reportlab==4.0.7
