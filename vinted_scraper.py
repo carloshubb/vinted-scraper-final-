@@ -22,7 +22,7 @@ combos = [
     {"brand": "Levi's", "category": "Jeans", "audience": "Men", "catalog_ids": [257], "brand_ids": [10]}
 ]
 
-# Season keywords - Fixed encoding
+# Season keywords
 season_keywords = {
     "summer": ["SS24", "spring/summer", "verano", "primavera/verano", "summer"],
     "winter": ["FW24", "fall/winter", "invierno", "otoño/invierno", "winter"]
@@ -36,6 +36,33 @@ def extract_season(title, description):
             if kw.lower() in text:
                 return season, kw
     return None, None
+
+def parse_vinted_timestamp(timestamp_value):
+    """
+    Parse Vinted timestamp which can be:
+    - Unix timestamp (integer)
+    - ISO string
+    - Unix timestamp as string
+    Returns datetime object or None
+    """
+    if not timestamp_value:
+        return None
+    
+    try:
+        # Try as unix timestamp (integer or string)
+        if isinstance(timestamp_value, (int, float)):
+            return datetime.fromtimestamp(timestamp_value)
+        elif isinstance(timestamp_value, str):
+            # Try parsing as unix timestamp
+            try:
+                ts = float(timestamp_value)
+                return datetime.fromtimestamp(ts)
+            except ValueError:
+                # Try parsing as ISO string
+                return datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
+    except Exception as e:
+        logger.warning(f"Could not parse timestamp '{timestamp_value}': {e}")
+        return None
 
 def build_api_url(combo, page=1, per_page=960):
     """Build API URL with configurable per_page parameter."""
@@ -57,6 +84,8 @@ def build_api_url(combo, page=1, per_page=960):
 def scrape_vinted(headless=True, per_page=960):
     """Main scraping function."""
     data = []
+    scrape_timestamp = datetime.now()  # Record when scraping started
+    
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
         context = browser.new_context(
@@ -161,7 +190,35 @@ def scrape_vinted(headless=True, per_page=960):
                                 price = 0.0
                             
                             currency = price_dict.get('currency', 'EUR') if isinstance(price_dict, dict) else 'EUR'
-                            published_at = item.get('created_at_ts', item.get('created_at', datetime.now().isoformat()))
+                            
+                            # CRITICAL FIX: Extract timestamp from photo metadata
+                            # Vinted's API provides timestamp in photo.high_resolution.timestamp
+                            published_at_raw = None
+                            
+                            # Try to get photo timestamp (best available proxy for listing date)
+                            photo_data = item.get('photo', {})
+                            if isinstance(photo_data, dict):
+                                high_res = photo_data.get('high_resolution', {})
+                                if isinstance(high_res, dict):
+                                    published_at_raw = high_res.get('timestamp')
+                            
+                            # Fallback chain
+                            if not published_at_raw:
+                                published_at_raw = (
+                                    item.get('created_at_ts') or
+                                    item.get('created_at') or
+                                    item.get('updated_at_ts')
+                                )
+                            
+                            published_at = parse_vinted_timestamp(published_at_raw)
+                            
+                            if published_at is None:
+                                logger.warning(f"Could not extract published_at for item {item.get('id')}, using scrape time")
+                                published_at = scrape_timestamp
+                            else:
+                                # Log successful extraction with actual date
+                                days_old = (scrape_timestamp - published_at).days
+                                logger.debug(f"Item {item.get('id')} photo timestamp: {published_at.date()} ({days_old} days old)")
                             
                             # Get item_id
                             item_id = item.get('id', 'Unknown')
@@ -182,15 +239,16 @@ def scrape_vinted(headless=True, per_page=960):
                                 "audience": audience,
                                 "price": price,
                                 "currency": currency,
-                                "published_at": published_at,
+                                "published_at": published_at.isoformat(),
                                 "listing_url": listing_url,
                                 "seller_id": seller_id,
                                 "visible": visible,
                                 "season": season,
-                                "season_keyword": season_keyword
+                                "season_keyword": season_keyword,
+                                "scrape_timestamp": scrape_timestamp.isoformat()  # Track when we scraped it
                             }
                             data.append(item_data)
-                            logger.info(f"Scraped: {title} ({price} {currency})")
+                            logger.info(f"Scraped: {title} ({price} {currency}, published: {published_at.date()})")
 
                         # Update pagination
                         pagination = json_data.get('pagination', {})
@@ -234,8 +292,7 @@ def scrape_vinted(headless=True, per_page=960):
 
         browser.close()
 
-    
-# Save CSV
+    # Save CSV
     if not data:
         logger.error("No data collected! Check debug_response_*.json files.")
         return
@@ -262,6 +319,13 @@ def scrape_vinted(headless=True, per_page=960):
 
     df.to_csv(filepath, index=False, encoding='utf-8')
     logger.info(f"Saved {len(df)} items to {filepath}")
+    
+    # Show published_at statistics
+    df['published_at'] = pd.to_datetime(df['published_at'])
+    logger.info(f"\nPublished_at date range:")
+    logger.info(f"  Earliest: {df['published_at'].min()}")
+    logger.info(f"  Latest: {df['published_at'].max()}")
+    logger.info(f"  Unique dates: {df['published_at'].dt.date.nunique()}")
 
 if __name__ == "__main__":
     scrape_vinted(headless=True, per_page=960)

@@ -58,34 +58,16 @@ def load_all_data():
                 sold_events_df[col] = pd.to_datetime(sold_events_df[col])
         
         # CRITICAL FIX: Always recalculate days_to_sell from timestamps
-        # Try to use published_at if available (more accurate), otherwise first_seen_at
-        if 'published_at' in sold_events_df.columns:
-            listing_date_col = 'published_at'
-            logger.info("Using published_at as listing date")
-        elif 'first_seen_at' in sold_events_df.columns:
-            listing_date_col = 'first_seen_at'
-            logger.info("Using first_seen_at as listing date")
-        elif 'first_seen' in sold_events_df.columns:
-            listing_date_col = 'first_seen'
-            logger.info("Using first_seen as listing date")
-        else:
-            listing_date_col = None
-            logger.error("❌ No listing date column found")
+        first_seen_col = 'first_seen_at' if 'first_seen_at' in sold_events_df.columns else 'first_seen'
         
-        if listing_date_col and 'sold_at' in sold_events_df.columns:
+        if first_seen_col in sold_events_df.columns and 'sold_at' in sold_events_df.columns:
             # Recalculate days_to_sell as FLOAT (don't truncate to int)
             sold_events_df['days_to_sell'] = (
-                sold_events_df['sold_at'] - sold_events_df[listing_date_col]
+                sold_events_df['sold_at'] - sold_events_df[first_seen_col]
             ).dt.total_seconds() / (24 * 3600)
-            logger.info(f"✅ Recalculated days_to_sell from {listing_date_col} and sold_at")
-            
-            # Add warning if all first_seen_at are the same
-            if listing_date_col in ['first_seen_at', 'first_seen']:
-                unique_dates = sold_events_df[listing_date_col].nunique()
-                if unique_dates < 10:
-                    logger.warning(f"⚠️  Only {unique_dates} unique listing dates - data may be inaccurate")
+            logger.info(f"✅ Recalculated days_to_sell from {first_seen_col} and sold_at")
         else:
-            logger.error(f"❌ Cannot calculate days_to_sell: missing columns")
+            logger.error(f"❌ Cannot calculate days_to_sell: missing {first_seen_col} or sold_at columns")
         
         # Add sold_confidence if missing (assume high confidence if not present)
         if 'sold_confidence' not in sold_events_df.columns:

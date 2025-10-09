@@ -224,7 +224,7 @@ def detect_price_changes(current_df, previous_df):
     return events_df
 
 
-def detect_sold_items(current_df, previous_df, hours_threshold=4):
+def detect_sold_items(current_df, previous_df, hours_threshold=5):
     """Detect items that disappeared (likely sold)."""
     if previous_df is None or len(previous_df) == 0:
         logger.info("No previous data for sold item detection")
@@ -259,7 +259,7 @@ def detect_sold_items(current_df, previous_df, hours_threshold=4):
         # Sold confidence logic
         if time_diff >= timedelta(hours=hours_threshold):
             confidence = 1.0  # High confidence - missing for 48+ hours
-        elif time_diff >= timedelta(hours=2):
+        elif time_diff >= timedelta(hours=3):
             confidence = 0.5  # Medium confidence - missing for 24+ hours
         else:
             confidence = 0.0  # Low confidence - just disappeared
@@ -282,9 +282,9 @@ def detect_sold_items(current_df, previous_df, hours_threshold=4):
     
     events_df = pd.DataFrame(sold_events)
     logger.info(f"Detected {len(events_df)} potentially sold items")
-    logger.info(f"  - High confidence (≥48h): {len(events_df[events_df['sold_confidence'] == 1.0])}")
-    logger.info(f"  - Medium confidence (24-48h): {len(events_df[events_df['sold_confidence'] == 0.5])}")
-    logger.info(f"  - Low confidence (<24h): {len(events_df[events_df['sold_confidence'] == 0.0])}")
+    logger.info(f"  - High confidence (≥5h): {len(events_df[events_df['sold_confidence'] == 1.0])}")
+    logger.info(f"  - Medium confidence (3-5h): {len(events_df[events_df['sold_confidence'] == 0.5])}")
+    logger.info(f"  - Low confidence (<3h): {len(events_df[events_df['sold_confidence'] == 0.0])}")
     
     return events_df
 
