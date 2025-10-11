@@ -1,0 +1,6 @@
+2025-10-10 23:52:34,584 - INFO - VINTED MARKET INTELLIGENCE PIPELINE
+2025-10-10 23:52:34,584 - INFO - Started: 2025-10-10 23:52:34
+2025-10-10 23:52:34,588 - INFO - Checking dependencies...
+2025-10-10 23:52:35,700 - ERROR - 
+Missing packages: reportlab
+2025-10-10 23:52:35,700 - ERROR - Install with: pip install -r requirements.txt

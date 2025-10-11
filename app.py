@@ -1,6 +1,7 @@
 """
 Vinted Market Intelligence Dashboard
 Streamlit application with 4 pages: Overview, Brand Analysis, Calculator, Downloads
+FIXED: Added PDF export functionality
 """
 import streamlit as st
 import pandas as pd
@@ -9,6 +10,13 @@ import plotly.graph_objects as go
 from pathlib import Path
 import sys
 from datetime import datetime
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent))
@@ -60,6 +68,86 @@ def load_dashboard_data():
         st.error(f"Error loading data: {e}")
         st.info("Please run the data pipeline first: `python run_pipeline.py`")
         return None, None, None
+
+# PDF Generation Function
+def generate_pdf_report(listings_df, sold_events_df):
+    """Generate 1-page PDF summary report."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#1f77b4'),
+        spaceAfter=12,
+        alignment=TA_CENTER
+    )
+    story.append(Paragraph("Vinted Market Intelligence Report", title_style))
+    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Summary Stats Table
+    summary_data = [
+        ['Metric', 'Value'],
+        ['Total Listings', f"{len(listings_df):,}"],
+        ['Active Items', f"{len(listings_df[listings_df['status'] == 'active']):,}"],
+        ['Sold Items', f"{len(sold_events_df):,}"],
+        ['Avg Price', f"€{listings_df['price'].mean():.2f}"],
+        ['Median Price', f"€{listings_df['price'].median():.2f}"],
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Brand KPIs Table
+    story.append(Paragraph("Brand Performance Summary", styles['Heading2']))
+    story.append(Spacer(1, 0.1*inch))
+    
+    brand_data = [['Brand', 'Active', 'Sold', 'Median DTS', 'Sell-Through', 'Liquidity']]
+    
+    for brand in sorted(listings_df['brand_norm'].unique()):
+        kpis = calculate_all_kpis(brand=brand)
+        active_count = len(listings_df[(listings_df['brand_norm'] == brand) & (listings_df['status'] == 'active')])
+        sold_count = len(sold_events_df[sold_events_df['brand'] == brand]) if len(sold_events_df) > 0 else 0
+        
+        dts = f"{kpis['dts']['median']:.1f}d" if kpis['dts'] else "N/A"
+        st_rate = f"{kpis['sell_through_30d']['percentage']:.1f}%" if kpis['sell_through_30d'] else "N/A"
+        liq_score = f"{kpis['liquidity']['score']:.0f} ({kpis['liquidity']['grade']})" if kpis['liquidity'] else "N/A"
+        
+        brand_data.append([brand, str(active_count), str(sold_count), dts, st_rate, liq_score])
+    
+    brand_table = Table(brand_data, colWidths=[1.2*inch, 0.8*inch, 0.8*inch, 1*inch, 1*inch, 1.2*inch])
+    brand_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.lightblue),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(brand_table)
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
 # Load data
 listings_df, price_events_df, sold_events_df = load_dashboard_data()
@@ -161,7 +249,7 @@ if page == "Overview":
         
         fig = go.Figure()
         
-        colors = ['#28a745' if g == 'A' else '#17a2b8' if g == 'B' else '#ffc107' if g == 'C' else '#dc3545' 
+        colors_map = ['#28a745' if g == 'A' else '#17a2b8' if g == 'B' else '#ffc107' if g == 'C' else '#dc3545' 
                   for g in liquidity_df['Grade']]
         
         fig.add_trace(go.Bar(
@@ -169,7 +257,7 @@ if page == "Overview":
             y=liquidity_df['Liquidity Score'],
             text=liquidity_df['Grade'],
             textposition='outside',
-            marker_color=colors,
+            marker_color=colors_map,
             hovertemplate='<b>%{x}</b><br>Score: %{y:.1f}<br>Grade: %{text}<extra></extra>'
         ))
         
@@ -186,14 +274,14 @@ if page == "Overview":
         
         # Key insights
         st.markdown("---")
-        st.subheader(" Key Insights")
+        st.subheader("Key Insights")
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
             top_brand = liquidity_df.iloc[0]
             st.metric(
-                " Most Liquid Brand",
+                "Most Liquid Brand",
                 top_brand['Brand'],
                 f"Score: {top_brand['Liquidity Score']:.1f}"
             )
@@ -201,7 +289,7 @@ if page == "Overview":
         with col2:
             fastest_dts = liquidity_df.loc[liquidity_df['DTS (days)'].idxmin()]
             st.metric(
-                " Fastest Selling",
+                "Fastest Selling",
                 fastest_dts['Brand'],
                 f"{fastest_dts['DTS (days)']:.1f} days"
             )
@@ -209,7 +297,7 @@ if page == "Overview":
         with col3:
             best_sellthrough = liquidity_df.loc[liquidity_df['Sell-Through 30d (%)'].idxmax()]
             st.metric(
-                " Best Sell-Through",
+                "Best Sell-Through",
                 best_sellthrough['Brand'],
                 f"{best_sellthrough['Sell-Through 30d (%)']:.1f}%"
             )
@@ -430,7 +518,7 @@ elif page == "Price Calculator":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader(" Item Details")
+        st.subheader("Item Details")
         
         calc_brand = st.selectbox(
             "Brand",
@@ -458,7 +546,7 @@ elif page == "Price Calculator":
             calc_season = None
     
     with col2:
-        st.subheader(" Market Data")
+        st.subheader("Market Data")
         
         # Calculate KPIs for selected combination
         calc_kpis = calculate_all_kpis(
@@ -472,7 +560,7 @@ elif page == "Price Calculator":
             st.success(f"✓ Found {calc_kpis['price_distribution']['count']} comparable items")
             
             # Show price range
-            st.markdown("###  Recommended Price Range")
+            st.markdown("###Recommended Price Range")
             
             p25 = calc_kpis['price_distribution']['p25']
             p50 = calc_kpis['price_distribution']['p50']
@@ -488,7 +576,7 @@ elif page == "Price Calculator":
                 st.metric("Premium Price", f"€{p75:.2f}", "75th percentile")
             
             # Show time to sell
-            st.markdown("###  Estimated Time to Sell")
+            st.markdown("###Estimated Time to Sell")
             
             if calc_kpis['dts']:
                 dts_median = calc_kpis['dts']['median']
@@ -502,14 +590,14 @@ elif page == "Price Calculator":
                 """)
                 
                 # Recommendations
-                st.markdown("###  Pricing Strategy")
+                st.markdown("###Pricing Strategy")
                 
                 if dts_median < 10:
-                    st.success(" High demand! You can price at the premium range.")
+                    st.success("High demand! You can price at the premium range.")
                 elif dts_median < 20:
-                    st.info(" Good demand. Market price recommended.")
+                    st.info("Good demand. Market price recommended.")
                 else:
-                    st.warning(" Slower sales. Consider budget pricing for faster turnover.")
+                    st.warning("Slower sales. Consider budget pricing for faster turnover.")
             
             else:
                 st.warning("Not enough sold items data for time-to-sell estimates")
@@ -520,7 +608,7 @@ elif page == "Price Calculator":
     st.markdown("---")
     
     # Advanced calculator
-    st.subheader(" Custom Price Estimator")
+    st.subheader("Custom Price Estimator")
     
     col1, col2, col3 = st.columns(3)
     
@@ -570,7 +658,7 @@ elif page == "Price Calculator":
             st.metric("Estimated Days to Sell", f"{estimated_dts:.0f} days", speed)
 
 # ============================================================================
-# PAGE 4: DOWNLOADS
+# PAGE 4: DOWNLOADS (WITH PDF)
 # ============================================================================
 
 elif page == "Downloads":
@@ -583,14 +671,14 @@ elif page == "Downloads":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader(" CSV Exports")
+        st.subheader("CSV Exports")
         
         # Listings export
         st.markdown("### Active Listings")
         active_df = listings_df[listings_df['status'] == 'active']
         csv_active = active_df.to_csv(index=False)
         st.download_button(
-            label="📥 Download Active Listings (CSV)",
+            label="Download Active Listings (CSV)",
             data=csv_active,
             file_name=f"vinted_active_listings_{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv"
@@ -602,7 +690,7 @@ elif page == "Downloads":
             st.markdown("### Sold Items")
             csv_sold = sold_events_df.to_csv(index=False)
             st.download_button(
-                label="📥 Download Sold Items (CSV)",
+                label="Download Sold Items (CSV)",
                 data=csv_sold,
                 file_name=f"vinted_sold_items_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv"
@@ -614,7 +702,7 @@ elif page == "Downloads":
             st.markdown("### Price Changes")
             csv_prices = price_events_df.to_csv(index=False)
             st.download_button(
-                label="📥 Download Price Changes (CSV)",
+                label="Download Price Changes (CSV)",
                 data=csv_prices,
                 file_name=f"vinted_price_changes_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv"
@@ -622,10 +710,10 @@ elif page == "Downloads":
             st.info(f"{len(price_events_df):,} price changes")
     
     with col2:
-        st.subheader(" Summary Reports")
+        st.subheader("Summary Reports")
         
-        # KPI Summary
-        st.markdown("### KPI Summary Report")
+        # KPI Summary CSV
+        st.markdown("### KPI Summary Report (CSV)")
         
         # Generate summary for all brands
         summary_data = []
@@ -645,28 +733,48 @@ elif page == "Downloads":
         csv_summary = summary_df.to_csv(index=False)
         
         st.download_button(
-            label="📥 Download KPI Summary (CSV)",
+            label="Download KPI Summary (CSV)",
             data=csv_summary,
             file_name=f"vinted_kpi_summary_{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv"
         )
         
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
+        
+        # PDF Export (FIXED: Added functionality)
+        st.markdown("### 1-Page PDF Report")
+        st.markdown("Generate a comprehensive 1-page summary report in PDF format.")
+        
+        if st.button("Generate PDF Report", type="primary"):
+            with st.spinner("Generating PDF..."):
+                try:
+                    pdf_buffer = generate_pdf_report(listings_df, sold_events_df)
+                    
+                    st.download_button(
+                        label="Download PDF Report",
+                        data=pdf_buffer,
+                        file_name=f"vinted_market_report_{datetime.now().strftime('%Y%m%d')}.pdf",
+                        mime="application/pdf"
+                    )
+                    st.success("PDF report generated successfully!")
+                except Exception as e:
+                    st.error(f"Error generating PDF: {e}")
+                    st.info("Make sure reportlab is installed: `pip install reportlab`")
     
     st.markdown("---")
     st.info("""
-    **Note**: PDF export functionality requires additional libraries.  
-    For now, you can:
-    1. Download CSV files
-    2. Import into Excel/Google Sheets
-    3. Create custom reports
+    **Export Options:**
+    - **CSV files**: Raw data for analysis in Excel, Python, R
+    - **PDF report**: 1-page executive summary with key metrics
+    - All exports include data from the latest scrape
     """)
 
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 2rem;'>
-    <p>Vinted Market Intelligence Dashboard</p>
+    <p><strong>Vinted Market Intelligence Dashboard</strong></p>
     <p>Data updates every 48 hours | Last refresh: {}</p>
+    <p style='font-size: 0.8rem;'>5 Combos: Zara·Dresses·Women | Mango·Dresses·Women | Nike·Sneakers·Men | H&M·T-shirt·Men | Levi's·Jeans·Men</p>
 </div>
 """.format(datetime.now().strftime('%Y-%m-%d %H:%M')), unsafe_allow_html=True)

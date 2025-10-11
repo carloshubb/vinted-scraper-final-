@@ -1,101 +1,335 @@
 """
-Complete pipeline runner that executes scraping and data processing
+Master Pipeline Runner for Vinted Market Intelligence
+Runs: Scrape → Process → Calculate KPIs
 """
+import subprocess
+import sys
 import logging
 from datetime import datetime
-import sys
 from pathlib import Path
 
-# Logging setup - Fixed for Windows encoding
+# Setup logging with UTF-8 encoding for Windows compatibility
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(f'pipeline_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log', encoding='utf-8')
+        logging.FileHandler(
+            f'pipeline_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log',
+            encoding='utf-8'
+        ),
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
 
+def run_command(command, description):
+    """Run a command and handle errors."""
+    logger.info("="*70)
+    logger.info(f"STEP: {description}")
+    logger.info("="*70)
+    
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        logger.info(result.stdout)
+        if result.stderr:
+            logger.warning(result.stderr)
+        logger.info(f"[OK] {description} completed successfully")
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.error(f"[FAIL] {description} failed!")
+        logger.error(f"Error: {e}")
+        logger.error(f"Output: {e.stdout}")
+        logger.error(f"Error output: {e.stderr}")
+        return False
+    except Exception as e:
+        logger.error(f"[FAIL] Unexpected error in {description}: {e}")
+        return False
 
-def run_full_pipeline():
-    """Run the complete scraping and processing pipeline."""
+def check_dependencies():
+    """Check if required packages are installed."""
+    logger.info("Checking dependencies...")
     
-    logger.info("="*70)
-    logger.info("VINTED DATA PIPELINE - FULL RUN")
-    logger.info("="*70)
+    required = ['playwright', 'pandas', 'streamlit', 'plotly', 'reportlab']
+    missing = []
     
-    try:
-        # Step 1: Run scraper
-        logger.info("\n[1/2] Running Vinted scraper...")
-        logger.info("-" * 70)
-        
-        from vinted_scraper import scrape_vinted
-        scrape_vinted(headless=True, per_page=960)
-        
-        logger.info("OK Scraping completed successfully")
-        
-    except Exception as e:
-        logger.error(f"ERROR Scraping failed: {e}")
-        logger.error("Please check your scraper configuration")
+    for package in required:
+        try:
+            __import__(package)
+            logger.info(f"[OK] {package}")
+        except ImportError:
+            missing.append(package)
+            logger.error(f"[MISSING] {package} not found")
+    
+    if missing:
+        logger.error(f"\nMissing packages: {', '.join(missing)}")
+        logger.error("Install with: pip install -r requirements.txt")
         return False
     
-    try:
-        # Step 2: Process data
-        logger.info("\n[2/2] Processing scraped data...")
-        logger.info("-" * 70)
-        
-        from process_data import process_pipeline
-        listings_df, price_events_df, sold_events_df = process_pipeline()
-        
-        logger.info("OK Data processing completed successfully")
-        
-    except Exception as e:
-        logger.error(f"ERROR Data processing failed: {e}")
-        logger.error("Check the scrape files and try running process_data.py separately")
-        return False
-    
-    logger.info("\n" + "="*70)
-    logger.info("OK PIPELINE COMPLETED SUCCESSFULLY!")
-    logger.info("="*70)
-    logger.info("\nGenerated files:")
-    logger.info("  [DATA] data/processed/listings.parquet")
-    logger.info("  [PRICES] data/processed/price_events.parquet")
-    logger.info("  [SOLD] data/processed/sold_events.parquet")
-    logger.info("\nNext steps:")
-    logger.info("  1. Run this script again in 48 hours to detect changes")
-    logger.info("  2. Use calculate_kpis.py to compute metrics")
-    logger.info("  3. Launch dashboard with: streamlit run app.py")
-    
+    logger.info("[OK] All dependencies installed")
     return True
 
-
-def run_processing_only():
-    """Run only the data processing step (if scrape already exists)."""
-    logger.info("Running data processing only...")
+def main():
+    """Main pipeline execution."""
+    start_time = datetime.now()
     
-    try:
-        from process_data import process_pipeline
-        process_pipeline()
-        logger.info("OK Processing completed")
-        return True
-    except Exception as e:
-        logger.error(f"ERROR Processing failed: {e}")
-        return False
-
+    logger.info("\n" + "="*70)
+    logger.info("VINTED MARKET INTELLIGENCE PIPELINE")
+    logger.info(f"Started: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("="*70 + "\n")
+    
+    # Check dependencies
+    if not check_dependencies():
+        logger.error("[FAIL] Dependency check failed. Exiting.")
+        sys.exit(1)
+    
+    # Create data directories
+    Path("data/scrapes").mkdir(parents=True, exist_ok=True)
+    Path("data/processed").mkdir(parents=True, exist_ok=True)
+    logger.info("[OK] Data directories ready\n")
+    
+    # Step 1: Run scraper
+    success = run_command(
+        [sys.executable, "vinted_scraper.py"],
+        "SCRAPING (vinted_scraper.py)"
+    )
+    
+    if not success:
+        logger.error("[FAIL] Pipeline failed at scraping stage")
+        sys.exit(1)
+    
+    # Step 2: Process data
+    success = run_command(
+        [sys.executable, "process_data.py"],
+        "PROCESSING (process_data.py)"
+    )
+    
+    if not success:
+        logger.error("[FAIL] Pipeline failed at processing stage")
+        sys.exit(1)
+    
+    # Step 3: Calculate KPIs
+    success = run_command(
+        [sys.executable, "calculate_kpis.py"],
+        "CALCULATING KPIs (calculate_kpis.py)"
+    )
+    
+    if not success:
+        logger.warning("[WARN] KPI calculation had issues (normal on first run)")
+        logger.info("Note: Full KPIs require at least 2 scrapes (48 hours apart)")
+    
+    # Summary
+    end_time = datetime.now()
+    duration = end_time - start_time
+    
+    logger.info("\n" + "="*70)
+    logger.info("PIPELINE COMPLETED")
+    logger.info("="*70)
+    logger.info(f"Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"End time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Duration: {duration}")
+    logger.info("="*70)
+    
+    # Check output files
+    logger.info("\nOutput Files:")
+    
+    scrape_files = list(Path("data/scrapes").glob("vinted_scrape_*.csv"))
+    if scrape_files:
+        latest = sorted(scrape_files, key=lambda x: x.stat().st_mtime)[-1]
+        logger.info(f"  [OK] Latest scrape: {latest.name}")
+    else:
+        logger.error("  [FAIL] No scrape files found")
+    
+    processed_files = {
+        "listings.parquet": "Main listings database",
+        "price_events.parquet": "Price changes",
+        "sold_events.parquet": "Sold items"
+    }
+    
+    for file, desc in processed_files.items():
+        path = Path("data/processed") / file
+        if path.exists():
+            size = path.stat().st_size / 1024  # KB
+            logger.info(f"  [OK] {file} ({size:.1f} KB) - {desc}")
+        else:
+            logger.warning(f"  [WARN] {file} not found - {desc}")
+    
+    # Next steps
+    logger.info("\nNext Steps:")
+    logger.info("  1. Test dashboard: streamlit run app.py")
+    logger.info("  2. Wait 48 hours for second scrape")
+    logger.info("  3. Run pipeline again to detect sold items")
+    logger.info("  4. Deploy to Streamlit Cloud")
+    logger.info("\n[OK] Pipeline execution complete!\n")
 
 if __name__ == "__main__":
-    # Check command line arguments
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "--process-only":
-            run_processing_only()
-        elif sys.argv[1] == "--scrape-only":
-            from vinted_scraper import scrape_vinted
-            scrape_vinted(headless=True, per_page=960)
-        else:
-            print("Usage:")
-            print("  python run_pipeline.py              # Run full pipeline")
-            print("  python run_pipeline.py --process-only   # Process existing scrape")
-            print("  python run_pipeline.py --scrape-only    # Scrape only")
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.warning("\n[INTERRUPT] Pipeline interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"\n[FAIL] Unexpected error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+
+def run_command(command, description):
+    """Run a command and handle errors."""
+    logger.info("="*70)
+    logger.info(f"STEP: {description}")
+    logger.info("="*70)
+    
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        logger.info(result.stdout)
+        if result.stderr:
+            logger.warning(result.stderr)
+        logger.info(f"✅ {description} completed successfully")
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.error(f"❌ {description} failed!")
+        logger.error(f"Error: {e}")
+        logger.error(f"Output: {e.stdout}")
+        logger.error(f"Error output: {e.stderr}")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Unexpected error in {description}: {e}")
+        return False
+
+def check_dependencies():
+    """Check if required packages are installed."""
+    logger.info("Checking dependencies...")
+    
+    required = ['playwright', 'pandas', 'streamlit', 'plotly', 'reportlab']
+    missing = []
+    
+    for package in required:
+        try:
+            __import__(package)
+            logger.info(f"✅ {package}")
+        except ImportError:
+            missing.append(package)
+            logger.error(f"❌ {package} not found")
+    
+    if missing:
+        logger.error(f"\nMissing packages: {', '.join(missing)}")
+        logger.error("Install with: pip install -r requirements.txt")
+        return False
+    
+    logger.info("✅ All dependencies installed")
+    return True
+
+def main():
+    """Main pipeline execution."""
+    start_time = datetime.now()
+    
+    logger.info("\n" + "🚀 "*30)
+    logger.info("VINTED MARKET INTELLIGENCE PIPELINE")
+    logger.info(f"Started: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("🚀 "*30 + "\n")
+    
+    # Check dependencies
+    if not check_dependencies():
+        logger.error("❌ Dependency check failed. Exiting.")
+        sys.exit(1)
+    
+    # Create data directories
+    Path("data/scrapes").mkdir(parents=True, exist_ok=True)
+    Path("data/processed").mkdir(parents=True, exist_ok=True)
+    logger.info("✅ Data directories ready\n")
+    
+    # Step 1: Run scraper
+    success = run_command(
+        [sys.executable, "vinted_scraper.py"],
+        "SCRAPING (vinted_scraper.py)"
+    )
+    
+    if not success:
+        logger.error("❌ Pipeline failed at scraping stage")
+        sys.exit(1)
+    
+    # Step 2: Process data
+    success = run_command(
+        [sys.executable, "process_data.py"],
+        "PROCESSING (process_data.py)"
+    )
+    
+    if not success:
+        logger.error("❌ Pipeline failed at processing stage")
+        sys.exit(1)
+    
+    # Step 3: Calculate KPIs
+    success = run_command(
+        [sys.executable, "calculate_kpis.py"],
+        "CALCULATING KPIs (calculate_kpis.py)"
+    )
+    
+    if not success:
+        logger.warning("⚠️  KPI calculation had issues (normal on first run)")
+        logger.info("Note: Full KPIs require at least 2 scrapes (48 hours apart)")
+    
+    # Summary
+    end_time = datetime.now()
+    duration = end_time - start_time
+    
+    logger.info("\n" + "="*70)
+    logger.info("PIPELINE COMPLETED")
+    logger.info("="*70)
+    logger.info(f"Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"End time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Duration: {duration}")
+    logger.info("="*70)
+    
+    # Check output files
+    logger.info("\n📁 Output Files:")
+    
+    scrape_files = list(Path("data/scrapes").glob("vinted_scrape_*.csv"))
+    if scrape_files:
+        latest = sorted(scrape_files, key=lambda x: x.stat().st_mtime)[-1]
+        logger.info(f"  ✅ Latest scrape: {latest.name}")
     else:
-        run_full_pipeline()
+        logger.error("  ❌ No scrape files found")
+    
+    processed_files = {
+        "listings.parquet": "Main listings database",
+        "price_events.parquet": "Price changes",
+        "sold_events.parquet": "Sold items"
+    }
+    
+    for file, desc in processed_files.items():
+        path = Path("data/processed") / file
+        if path.exists():
+            size = path.stat().st_size / 1024  # KB
+            logger.info(f"  ✅ {file} ({size:.1f} KB) - {desc}")
+        else:
+            logger.warning(f"  ⚠️  {file} not found - {desc}")
+    
+    # Next steps
+    logger.info("\n🎯 Next Steps:")
+    logger.info("  1. Test dashboard: streamlit run app.py")
+    logger.info("  2. Wait 48 hours for second scrape")
+    logger.info("  3. Run pipeline again to detect sold items")
+    logger.info("  4. Deploy to Streamlit Cloud")
+    logger.info("\n✅ Pipeline execution complete!\n")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.warning("\n⚠️  Pipeline interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"\n❌ Unexpected error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
