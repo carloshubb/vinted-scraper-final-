@@ -1,6 +1,6 @@
 """
 KPI Calculation Engine for Vinted Market Intelligence
-Calculates all required metrics with filtering capabilities
+COMPLETE VERSION with Proposal 2 updates
 """
 import pandas as pd
 import numpy as np
@@ -8,35 +8,27 @@ from pathlib import Path
 import logging
 from datetime import datetime, timedelta
 
-# Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path("data/processed")
 
 
-# ============================================================================
-# DATA LOADING
-# ============================================================================
-
 def load_all_data():
     """Load all processed data files."""
     logger.info("Loading processed data...")
     
-    # Load listings
     listings_file = DATA_DIR / "listings.parquet"
     if not listings_file.exists():
         raise FileNotFoundError("listings.parquet not found. Run the pipeline first!")
     listings_df = pd.read_parquet(listings_file)
     
-    # Ensure datetime columns are parsed (handle both naming conventions)
-    for col in ['first_seen', 'last_seen', 'first_seen_at', 'last_seen_at']:
+    for col in ['first_seen_at', 'last_seen_at', 'published_at', 'scrape_timestamp']:
         if col in listings_df.columns:
             listings_df[col] = pd.to_datetime(listings_df[col])
     
     logger.info(f"Loaded {len(listings_df)} listings")
     
-    # Load price events (optional)
     price_events_file = DATA_DIR / "price_events.parquet"
     if price_events_file.exists():
         price_events_df = pd.read_parquet(price_events_file)
@@ -45,70 +37,24 @@ def load_all_data():
         logger.info(f"Loaded {len(price_events_df)} price events")
     else:
         price_events_df = pd.DataFrame()
-        logger.warning("No price_events.parquet found")
     
-    # Load sold events (optional)
     sold_events_file = DATA_DIR / "sold_events.parquet"
     if sold_events_file.exists():
         sold_events_df = pd.read_parquet(sold_events_file)
         
-        # Parse datetime columns (handle both naming conventions)
-        for col in ['first_seen', 'first_seen_at', 'sold_at']:
+        for col in ['published_at', 'sold_at', 'first_seen_at']:
             if col in sold_events_df.columns:
                 sold_events_df[col] = pd.to_datetime(sold_events_df[col])
         
-        # CRITICAL FIX: Always recalculate days_to_sell from timestamps
-        # Try to use published_at if available (more accurate), otherwise first_seen_at
-        if 'published_at' in sold_events_df.columns:
-            listing_date_col = 'published_at'
-            logger.info("Using published_at as listing date")
-        elif 'first_seen_at' in sold_events_df.columns:
-            listing_date_col = 'first_seen_at'
-            logger.info("Using first_seen_at as listing date")
-        elif 'first_seen' in sold_events_df.columns:
-            listing_date_col = 'first_seen'
-            logger.info("Using first_seen as listing date")
-        else:
-            listing_date_col = None
-            logger.error("❌ No listing date column found")
-        
-        if listing_date_col and 'sold_at' in sold_events_df.columns:
-            # Recalculate days_to_sell as FLOAT (don't truncate to int)
-            sold_events_df['days_to_sell'] = (
-                sold_events_df['sold_at'] - sold_events_df[listing_date_col]
-            ).dt.total_seconds() / (24 * 3600)
-            logger.info(f"✅ Recalculated days_to_sell from {listing_date_col} and sold_at")
-            
-            # Add warning if all first_seen_at are the same
-            if listing_date_col in ['first_seen_at', 'first_seen']:
-                unique_dates = sold_events_df[listing_date_col].nunique()
-                if unique_dates < 10:
-                    logger.warning(f"⚠️  Only {unique_dates} unique listing dates - data may be inaccurate")
-        else:
-            logger.error(f"❌ Cannot calculate days_to_sell: missing columns")
-        
-        # Add sold_confidence if missing (assume high confidence if not present)
         if 'sold_confidence' not in sold_events_df.columns:
             sold_events_df['sold_confidence'] = 1.0
-            logger.info("Added default sold_confidence=1.0")
         
         logger.info(f"Loaded {len(sold_events_df)} sold events")
-        
-        # Debug: Show sample of days_to_sell
-        if len(sold_events_df) > 0 and 'days_to_sell' in sold_events_df.columns:
-            logger.info(f"Days to sell stats: min={sold_events_df['days_to_sell'].min():.1f}, "
-                       f"max={sold_events_df['days_to_sell'].max():.1f}, "
-                       f"median={sold_events_df['days_to_sell'].median():.1f}")
     else:
         sold_events_df = pd.DataFrame()
-        logger.warning("No sold_events.parquet found")
     
     return listings_df, price_events_df, sold_events_df
 
-
-# ============================================================================
-# FILTERING FUNCTIONS
-# ============================================================================
 
 def apply_filters(df, brand=None, category=None, audience=None, status=None, season=None):
     """Apply filters to dataframe."""
@@ -117,7 +63,6 @@ def apply_filters(df, brand=None, category=None, audience=None, status=None, sea
     if brand:
         if isinstance(brand, str):
             brand = [brand]
-        # Check which column name exists
         brand_col = 'brand_norm' if 'brand_norm' in filtered.columns else 'brand'
         if brand_col in filtered.columns:
             filtered = filtered[filtered[brand_col].isin(brand)]
@@ -125,7 +70,6 @@ def apply_filters(df, brand=None, category=None, audience=None, status=None, sea
     if category:
         if isinstance(category, str):
             category = [category]
-        # Check which column name exists
         cat_col = 'category_norm' if 'category_norm' in filtered.columns else 'category'
         if cat_col in filtered.columns:
             filtered = filtered[filtered[cat_col].isin(category)]
@@ -151,44 +95,26 @@ def apply_filters(df, brand=None, category=None, audience=None, status=None, sea
     return filtered
 
 
-# ============================================================================
-# KPI CALCULATIONS
-# ============================================================================
-
 def calculate_days_to_sell(sold_events_df, brand=None, category=None, audience=None, season=None):
-    """
-    Calculate Days-to-Sell (DTS) - Median days from first_seen to sold
-    
-    Returns:
-        dict with median, mean, p25, p75
-    """
+    """Calculate Days-to-Sell (DTS) - Median days from published_at to sold."""
     if sold_events_df.empty:
         logger.warning("No sold events available for DTS calculation")
         return None
     
-    # Apply filters
-    filtered = apply_filters(
-        sold_events_df, 
-        brand=brand, 
-        category=category, 
-        audience=audience, 
-        season=season
-    )
+    filtered = apply_filters(sold_events_df, brand=brand, category=category, audience=audience, season=season)
     
     if len(filtered) == 0:
         logger.warning("No items match filters for DTS calculation")
         return None
     
-    # Only use high confidence sales (≥0.5)
     high_confidence = filtered[filtered['sold_confidence'] >= 0.5]
     
     if len(high_confidence) == 0:
         logger.warning("No high-confidence sold items for DTS calculation")
         return None
     
-    # Check if days_to_sell exists
     if 'days_to_sell' not in high_confidence.columns:
-        logger.error("❌ days_to_sell column missing from sold_events")
+        logger.error("[FAIL] days_to_sell column missing from sold_events")
         return None
     
     dts_stats = {
@@ -207,67 +133,90 @@ def calculate_days_to_sell(sold_events_df, brand=None, category=None, audience=N
 def calculate_sell_through_30d(sold_events_df, listings_df, brand=None, category=None, audience=None, season=None):
     """
     Calculate 30-day sell-through rate
-    % of items that sold within 30 days
     
-    Returns:
-        dict with percentage and counts
+    PROPOSAL 2 FORMULA:
+    Numerator: Items sold in ≤30 days
+    Denominator: Items listed for ≥30 days (eligible to be sold)
     """
-    if sold_events_df.empty:
-        logger.warning("No sold events available for sell-through calculation")
+    filtered_listings = apply_filters(listings_df, brand=brand, category=category, audience=audience, season=season)
+    
+    if len(filtered_listings) == 0:
+        logger.warning("No listings match filters for sell-through calculation")
         return None
     
-    # Apply filters to sold items
-    filtered_sold = apply_filters(
-        sold_events_df, 
-        brand=brand, 
-        category=category, 
-        audience=audience, 
-        season=season
+    current_time = datetime.now()
+    
+    # Get listing date for each item
+    filtered_listings = filtered_listings.copy()
+    filtered_listings['listing_date'] = filtered_listings.apply(
+        lambda row: pd.to_datetime(row.get('published_at', row.get('first_seen_at'))),
+        axis=1
     )
     
-    if len(filtered_sold) == 0:
-        return None
+    # Calculate days since listing
+    filtered_listings['days_since_listed'] = (current_time - filtered_listings['listing_date']).dt.days
     
-    # Only high confidence
+    # PROPOSAL 2: Denominator = items listed ≥30 days
+    eligible_items = filtered_listings[filtered_listings['days_since_listed'] >= 30]
+    denominator = len(eligible_items)
+    
+    if denominator == 0:
+        logger.warning("No items have been listed for >=30 days yet")
+        return {
+            'percentage': 0.0,
+            'sold_30d': 0,
+            'eligible_items': 0,
+            'note': 'No items listed >=30 days'
+        }
+    
+    if sold_events_df.empty:
+        return {
+            'percentage': 0.0,
+            'sold_30d': 0,
+            'eligible_items': denominator,
+            'note': 'No sold items yet'
+        }
+    
+    filtered_sold = apply_filters(sold_events_df, brand=brand, category=category, audience=audience, season=season)
+    
+    if len(filtered_sold) == 0:
+        return {
+            'percentage': 0.0,
+            'sold_30d': 0,
+            'eligible_items': denominator
+        }
+    
     high_confidence = filtered_sold[filtered_sold['sold_confidence'] >= 0.5]
     
     if len(high_confidence) == 0:
-        return None
+        return {
+            'percentage': 0.0,
+            'sold_30d': 0,
+            'eligible_items': denominator
+        }
     
-    # Count sold within 30 days
+    # Numerator: Items sold within 30 days
     sold_30d = high_confidence[high_confidence['days_to_sell'] <= 30]
+    numerator = len(sold_30d)
     
-    sell_through = {
-        'percentage': (len(sold_30d) / len(high_confidence)) * 100,
-        'sold_30d': len(sold_30d),
-        'total_sold': len(high_confidence)
+    sell_through_pct = (numerator / denominator) * 100
+    
+    return {
+        'percentage': sell_through_pct,
+        'sold_30d': numerator,
+        'eligible_items': denominator,
+        'formula': f'{numerator} sold <=30d / {denominator} listed >=30d'
     }
-    
-    return sell_through
 
 
 def calculate_price_distribution(listings_df, brand=None, category=None, audience=None, status=None, season=None):
-    """
-    Calculate price distribution (P25, P50/Median, P75)
-    
-    Returns:
-        dict with percentiles and stats
-    """
-    # Apply filters
-    filtered = apply_filters(
-        listings_df, 
-        brand=brand, 
-        category=category, 
-        audience=audience, 
-        status=status, 
-        season=season
-    )
+    """Calculate price distribution (P25, P50/Median, P75)."""
+    filtered = apply_filters(listings_df, brand=brand, category=category, audience=audience, status=status, season=season)
     
     if len(filtered) == 0:
         logger.warning("No items match the filters for price distribution")
         return None
     
-    # Remove zero prices
     filtered = filtered[filtered['price'] > 0]
     
     price_stats = {
@@ -285,37 +234,20 @@ def calculate_price_distribution(listings_df, brand=None, category=None, audienc
 
 
 def calculate_discount_to_sell(price_events_df, sold_events_df, brand=None, category=None, audience=None, season=None):
-    """
-    Calculate average discount-to-sell
-    Average % price reduction before selling
-    
-    Returns:
-        dict with discount statistics
-    """
+    """Calculate average discount-to-sell."""
     if price_events_df.empty or sold_events_df.empty:
         logger.warning("Need both price events and sold events for discount calculation")
         return None
     
-    # Filter sold events
-    filtered_sold = apply_filters(
-        sold_events_df, 
-        brand=brand, 
-        category=category, 
-        audience=audience, 
-        season=season
-    )
+    filtered_sold = apply_filters(sold_events_df, brand=brand, category=category, audience=audience, season=season)
     
     if len(filtered_sold) == 0:
         return None
     
-    # Get item_ids of sold items
     sold_item_ids = set(filtered_sold['item_id'])
-    
-    # Find price changes for sold items
     sold_price_changes = price_events_df[price_events_df['item_id'].isin(sold_item_ids)]
     
     if len(sold_price_changes) == 0:
-        logger.info("No price changes found for sold items (items sold at original price)")
         return {
             'avg_discount_pct': 0.0,
             'median_discount_pct': 0.0,
@@ -323,14 +255,11 @@ def calculate_discount_to_sell(price_events_df, sold_events_df, brand=None, cate
             'total_sold_items': len(filtered_sold)
         }
     
-    # Calculate discount for each item (compare first price to last price)
     discounts = []
     for item_id in sold_item_ids:
         item_changes = sold_price_changes[sold_price_changes['item_id'] == item_id].sort_values('changed_at')
         if len(item_changes) > 0:
-            # Get first price (could be old_price of first event)
             first_price = item_changes.iloc[0]['old_price']
-            # Get last price (new_price of last event)
             last_price = item_changes.iloc[-1]['new_price']
             
             if first_price > 0:
@@ -352,7 +281,7 @@ def calculate_discount_to_sell(price_events_df, sold_events_df, brand=None, cate
     
     discounts_df = pd.DataFrame(discounts)
     
-    discount_stats = {
+    return {
         'avg_discount_pct': discounts_df['discount_pct'].mean(),
         'median_discount_pct': discounts_df['discount_pct'].median(),
         'items_with_discount': len(discounts_df),
@@ -360,60 +289,44 @@ def calculate_discount_to_sell(price_events_df, sold_events_df, brand=None, cate
         'max_discount': discounts_df['discount_pct'].max(),
         'min_discount': discounts_df['discount_pct'].min()
     }
-    
-    return discount_stats
 
 
 def calculate_liquidity_score(dts_stats, sell_through_stats):
-    """
-    Calculate liquidity score (0-100)
-    Higher score = more liquid (sells faster)
-    
-    Formula: 
-    - 50% based on sell-through rate (higher is better)
-    - 50% based on inverse of DTS (lower DTS is better)
-    """
+    """Calculate liquidity score (0-100)."""
     if dts_stats is None or sell_through_stats is None:
         return None
     
-    # Sell-through component (0-50 points)
     sell_through_score = (sell_through_stats['percentage'] / 100) * 50
     
-    # DTS component (0-50 points, inverse scaled)
-    # Assume 30 days = 0 points, 0 days = 50 points
     max_dts = 30
     dts_median = dts_stats['median']
     dts_score = max(0, (1 - (dts_median / max_dts)) * 50)
     
-    liquidity = {
-        'score': sell_through_score + dts_score,
+    total_score = sell_through_score + dts_score
+    
+    if total_score >= 75:
+        grade = 'A'
+    elif total_score >= 50:
+        grade = 'B'
+    elif total_score >= 25:
+        grade = 'C'
+    else:
+        grade = 'D'
+    
+    return {
+        'score': total_score,
         'sell_through_component': sell_through_score,
         'dts_component': dts_score,
-        'grade': 'A' if (sell_through_score + dts_score) >= 75 else 
-                 'B' if (sell_through_score + dts_score) >= 50 else 
-                 'C' if (sell_through_score + dts_score) >= 25 else 'D'
+        'grade': grade
     }
-    
-    return liquidity
 
-
-# ============================================================================
-# COMPREHENSIVE KPI CALCULATION
-# ============================================================================
 
 def calculate_all_kpis(brand=None, category=None, audience=None, status=None, season=None):
-    """
-    Calculate all KPIs with optional filters
-    
-    Returns:
-        dict containing all KPIs
-    """
+    """Calculate all KPIs with optional filters."""
     logger.info("Calculating KPIs...")
     
-    # Load data
     listings_df, price_events_df, sold_events_df = load_all_data()
     
-    # Apply filters for logging
     filter_desc = []
     if brand: filter_desc.append(f"Brand: {brand}")
     if category: filter_desc.append(f"Category: {category}")
@@ -423,43 +336,24 @@ def calculate_all_kpis(brand=None, category=None, audience=None, status=None, se
     
     if filter_desc:
         logger.info(f"Filters applied: {', '.join(filter_desc)}")
-    else:
-        logger.info("No filters applied (calculating overall KPIs)")
     
-    # Calculate all KPIs
     kpis = {}
     
-    # 1. Days to Sell (DTS)
     logger.info("Calculating Days-to-Sell (DTS)...")
-    kpis['dts'] = calculate_days_to_sell(
-        sold_events_df, brand, category, audience, season
-    )
+    kpis['dts'] = calculate_days_to_sell(sold_events_df, brand, category, audience, season)
     
-    # 2. 30-day Sell-Through Rate
     logger.info("Calculating 30-day sell-through rate...")
-    kpis['sell_through_30d'] = calculate_sell_through_30d(
-        sold_events_df, listings_df, brand, category, audience, season
-    )
+    kpis['sell_through_30d'] = calculate_sell_through_30d(sold_events_df, listings_df, brand, category, audience, season)
     
-    # 3. Price Distribution
     logger.info("Calculating price distribution...")
-    kpis['price_distribution'] = calculate_price_distribution(
-        listings_df, brand, category, audience, status, season
-    )
+    kpis['price_distribution'] = calculate_price_distribution(listings_df, brand, category, audience, status, season)
     
-    # 4. Discount to Sell
     logger.info("Calculating discount-to-sell...")
-    kpis['discount_to_sell'] = calculate_discount_to_sell(
-        price_events_df, sold_events_df, brand, category, audience, season
-    )
+    kpis['discount_to_sell'] = calculate_discount_to_sell(price_events_df, sold_events_df, brand, category, audience, season)
     
-    # 5. Liquidity Score
     logger.info("Calculating liquidity score...")
-    kpis['liquidity'] = calculate_liquidity_score(
-        kpis['dts'], kpis['sell_through_30d']
-    )
+    kpis['liquidity'] = calculate_liquidity_score(kpis['dts'], kpis['sell_through_30d'])
     
-    # Add metadata
     kpis['metadata'] = {
         'calculated_at': datetime.now().isoformat(),
         'filters': {
@@ -480,6 +374,53 @@ def calculate_all_kpis(brand=None, category=None, audience=None, status=None, se
     return kpis
 
 
+def print_kpi_report(kpis, title="KPI Report"):
+    """Pretty print KPI results."""
+    print("\n" + "="*70)
+    print(f"{title}")
+    print("="*70)
+    
+    if kpis['dts']:
+        print("\n[DTS] Days-to-Sell:")
+        print(f"   Median: {kpis['dts']['median']:.1f} days")
+        print(f"   Mean: {kpis['dts']['mean']:.1f} days")
+        print(f"   P25-P75: {kpis['dts']['p25']:.1f} - {kpis['dts']['p75']:.1f} days")
+        print(f"   Sample: {kpis['dts']['count']} sold items")
+    else:
+        print("\n[DTS] Days-to-Sell: No data available")
+    
+    if kpis['sell_through_30d']:
+        print("\n[SELL-THROUGH] 30-Day Sell-Through Rate:")
+        print(f"   {kpis['sell_through_30d']['percentage']:.1f}%")
+        print(f"   ({kpis['sell_through_30d']['sold_30d']} / {kpis['sell_through_30d']['eligible_items']} eligible items)")
+    else:
+        print("\n[SELL-THROUGH] 30-Day Sell-Through Rate: No data available")
+    
+    if kpis['price_distribution']:
+        print("\n[PRICE] Price Distribution:")
+        print(f"   P25: EUR {kpis['price_distribution']['p25']:.2f}")
+        print(f"   P50 (Median): EUR {kpis['price_distribution']['p50']:.2f}")
+        print(f"   P75: EUR {kpis['price_distribution']['p75']:.2f}")
+        print(f"   Sample: {kpis['price_distribution']['count']} items")
+    else:
+        print("\n[PRICE] Price Distribution: No data available")
+    
+    if kpis['discount_to_sell']:
+        print("\n[DISCOUNT] Discount-to-Sell:")
+        print(f"   Average: {kpis['discount_to_sell']['avg_discount_pct']:.1f}%")
+        print(f"   Median: {kpis['discount_to_sell']['median_discount_pct']:.1f}%")
+    else:
+        print("\n[DISCOUNT] Discount-to-Sell: No data available")
+    
+    if kpis['liquidity']:
+        print("\n[LIQUIDITY] Liquidity Score:")
+        print(f"   Overall: {kpis['liquidity']['score']:.1f}/100 (Grade: {kpis['liquidity']['grade']})")
+    else:
+        print("\n[LIQUIDITY] Liquidity Score: No data available")
+    
+    print("\n" + "="*70)
+
+
 def calculate_kpis_by_brand():
     """Calculate KPIs for each brand separately."""
     logger.info("\n" + "="*70)
@@ -487,12 +428,10 @@ def calculate_kpis_by_brand():
     logger.info("="*70)
     
     listings_df, _, _ = load_all_data()
-    
     brand_col = 'brand_norm' if 'brand_norm' in listings_df.columns else 'brand'
     brands = sorted(listings_df[brand_col].unique())
     
     brand_kpis = {}
-    
     for brand in brands:
         logger.info(f"\nProcessing: {brand}")
         brand_kpis[brand] = calculate_all_kpis(brand=brand)
@@ -507,105 +446,15 @@ def calculate_kpis_by_category():
     logger.info("="*70)
     
     listings_df, _, _ = load_all_data()
-    
     cat_col = 'category_norm' if 'category_norm' in listings_df.columns else 'category'
     categories = sorted(listings_df[cat_col].unique())
     
     category_kpis = {}
-    
     for category in categories:
         logger.info(f"\nProcessing: {category}")
         category_kpis[category] = calculate_all_kpis(category=category)
     
     return category_kpis
-
-
-def calculate_kpis_by_brand_category():
-    """Calculate KPIs for each brand+category combination."""
-    logger.info("\n" + "="*70)
-    logger.info("CALCULATING KPIs BY BRAND × CATEGORY")
-    logger.info("="*70)
-    
-    listings_df, _, _ = load_all_data()
-    
-    brand_col = 'brand_norm' if 'brand_norm' in listings_df.columns else 'brand'
-    cat_col = 'category_norm' if 'category_norm' in listings_df.columns else 'category'
-    
-    combos = listings_df.groupby([brand_col, cat_col]).size().reset_index()[[brand_col, cat_col]]
-    
-    combo_kpis = {}
-    
-    for _, row in combos.iterrows():
-        brand = row[brand_col]
-        category = row[cat_col]
-        key = f"{brand} - {category}"
-        
-        logger.info(f"\nProcessing: {key}")
-        combo_kpis[key] = calculate_all_kpis(brand=brand, category=category)
-    
-    return combo_kpis
-
-
-# ============================================================================
-# REPORTING & EXPORT
-# ============================================================================
-
-def print_kpi_report(kpis, title="KPI Report"):
-    """Pretty print KPI results."""
-    print("\n" + "="*70)
-    print(f"{title}")
-    print("="*70)
-    
-    # Days to Sell
-    if kpis['dts']:
-        print("\n📊 Days-to-Sell (DTS):")
-        print(f"   Median: {kpis['dts']['median']:.1f} days")
-        print(f"   Mean: {kpis['dts']['mean']:.1f} days")
-        print(f"   P25-P75: {kpis['dts']['p25']:.1f} - {kpis['dts']['p75']:.1f} days")
-        print(f"   Range: {kpis['dts']['min']:.0f} - {kpis['dts']['max']:.0f} days")
-        print(f"   Sample: {kpis['dts']['count']} sold items")
-    else:
-        print("\n📊 Days-to-Sell (DTS): No data available")
-    
-    # Sell-Through
-    if kpis['sell_through_30d']:
-        print("\n📈 30-Day Sell-Through Rate:")
-        print(f"   {kpis['sell_through_30d']['percentage']:.1f}%")
-        print(f"   ({kpis['sell_through_30d']['sold_30d']} of {kpis['sell_through_30d']['total_sold']} items)")
-    else:
-        print("\n📈 30-Day Sell-Through Rate: No data available")
-    
-    # Price Distribution
-    if kpis['price_distribution']:
-        print("\n💰 Price Distribution:")
-        print(f"   P25: €{kpis['price_distribution']['p25']:.2f}")
-        print(f"   P50 (Median): €{kpis['price_distribution']['p50']:.2f}")
-        print(f"   P75: €{kpis['price_distribution']['p75']:.2f}")
-        print(f"   Mean: €{kpis['price_distribution']['mean']:.2f}")
-        print(f"   Range: €{kpis['price_distribution']['min']:.2f} - €{kpis['price_distribution']['max']:.2f}")
-        print(f"   Sample: {kpis['price_distribution']['count']} items")
-    else:
-        print("\n💰 Price Distribution: No data available")
-    
-    # Discount to Sell
-    if kpis['discount_to_sell']:
-        print("\n💸 Discount-to-Sell:")
-        print(f"   Average: {kpis['discount_to_sell']['avg_discount_pct']:.1f}%")
-        print(f"   Median: {kpis['discount_to_sell']['median_discount_pct']:.1f}%")
-        print(f"   Items discounted: {kpis['discount_to_sell']['items_with_discount']} of {kpis['discount_to_sell']['total_sold_items']}")
-    else:
-        print("\n💸 Discount-to-Sell: No data available")
-    
-    # Liquidity Score
-    if kpis['liquidity']:
-        print("\n🌊 Liquidity Score:")
-        print(f"   Overall: {kpis['liquidity']['score']:.1f}/100 (Grade: {kpis['liquidity']['grade']})")
-        print(f"   Sell-Through Component: {kpis['liquidity']['sell_through_component']:.1f}/50")
-        print(f"   Speed Component: {kpis['liquidity']['dts_component']:.1f}/50")
-    else:
-        print("\n🌊 Liquidity Score: No data available")
-    
-    print("\n" + "="*70)
 
 
 def export_kpis_to_csv(all_kpis, filename="kpis_report.csv"):
@@ -615,31 +464,27 @@ def export_kpis_to_csv(all_kpis, filename="kpis_report.csv"):
     for key, kpis in all_kpis.items():
         row = {'segment': key}
         
-        # DTS
         if kpis.get('dts'):
             row['dts_median'] = kpis['dts']['median']
             row['dts_mean'] = kpis['dts']['mean']
             row['dts_p25'] = kpis['dts']['p25']
             row['dts_p75'] = kpis['dts']['p75']
         
-        # Sell-through
         if kpis.get('sell_through_30d'):
             row['sell_through_30d_pct'] = kpis['sell_through_30d']['percentage']
             row['sold_30d_count'] = kpis['sell_through_30d']['sold_30d']
+            row['eligible_items'] = kpis['sell_through_30d']['eligible_items']
         
-        # Price
         if kpis.get('price_distribution'):
             row['price_p25'] = kpis['price_distribution']['p25']
             row['price_p50'] = kpis['price_distribution']['p50']
             row['price_p75'] = kpis['price_distribution']['p75']
             row['price_mean'] = kpis['price_distribution']['mean']
         
-        # Discount
         if kpis.get('discount_to_sell'):
             row['avg_discount_pct'] = kpis['discount_to_sell']['avg_discount_pct']
             row['median_discount_pct'] = kpis['discount_to_sell']['median_discount_pct']
         
-        # Liquidity
         if kpis.get('liquidity'):
             row['liquidity_score'] = kpis['liquidity']['score']
             row['liquidity_grade'] = kpis['liquidity']['grade']
@@ -649,38 +494,30 @@ def export_kpis_to_csv(all_kpis, filename="kpis_report.csv"):
     df = pd.DataFrame(rows)
     output_file = DATA_DIR / filename
     df.to_csv(output_file, index=False)
-    logger.info(f"✅ Exported KPIs to {output_file}")
+    logger.info(f"[OK] Exported KPIs to {output_file}")
     
     return df
 
 
-# ============================================================================
-# MAIN EXECUTION
-# ============================================================================
-
 def main():
     """Main execution function."""
-    logger.info("\n" + "🎯 "*20)
+    logger.info("\n" + "="*60)
     logger.info("VINTED KPI CALCULATION ENGINE")
-    logger.info("🎯 "*20)
+    logger.info("="*60)
     
     try:
-        # Calculate overall KPIs
         logger.info("\nCalculating overall KPIs (no filters)...")
         overall_kpis = calculate_all_kpis()
         print_kpi_report(overall_kpis, "OVERALL KPIs")
         
-        # Calculate by brand
         brand_kpis = calculate_kpis_by_brand()
         for brand, kpis in brand_kpis.items():
             print_kpi_report(kpis, f"KPIs for {brand}")
         
-        # Calculate by category
         category_kpis = calculate_kpis_by_category()
         for category, kpis in category_kpis.items():
             print_kpi_report(kpis, f"KPIs for {category}")
         
-        # Export all to CSV
         logger.info("\nExporting results...")
         
         all_kpis = {'Overall': overall_kpis}
@@ -689,11 +526,11 @@ def main():
         
         export_kpis_to_csv(all_kpis, "kpis_complete_report.csv")
         
-        logger.info("\n✅ KPI calculation completed successfully!")
-        logger.info(f"📊 Results saved to: {DATA_DIR / 'kpis_complete_report.csv'}")
+        logger.info("\n[OK] KPI calculation completed successfully!")
+        logger.info(f"[REPORT] Results saved to: {DATA_DIR / 'kpis_complete_report.csv'}")
         
     except Exception as e:
-        logger.error(f"❌ Error calculating KPIs: {e}")
+        logger.error(f"[FAIL] Error calculating KPIs: {e}")
         raise
 
 
