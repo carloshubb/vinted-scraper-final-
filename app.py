@@ -285,17 +285,17 @@ if listings_df is None:
 def has_premium_access():
     return st.session_state.authenticated
 
-def request_access_widget():
-    st.warning("Premium Feature")
-    with st.expander("Enter Access Code"):
-        password = st.text_input("Access code:", type="password", key="premium_password")
-        if st.button("Unlock Premium"):
-            if password == "VINTED2024":
-                st.session_state.authenticated = True
-                st.success("Access granted!")
-                st.rerun()
-            else:
-                st.error("Invalid code")
+# def request_access_widget():
+#     st.warning("Premium Feature")
+#     with st.expander("Enter Access Code"):
+#         password = st.text_input("Access code:", type="password", key="premium_password")
+#         if st.button("Unlock Premium"):
+#             if password == "VINTED2024":
+#                 st.session_state.authenticated = True
+#                 st.success("Access granted!")
+#                 st.rerun()
+#             else:
+#                 st.error("Invalid code")
 
 
 # Sidebar
@@ -707,30 +707,30 @@ elif "Brand·Category Analysis" in page:
     st.subheader("Generate PDF Report")
     st.markdown("Generate a 1-page PDF summary of this analysis")
 
-if st.button("Generate PDF from This Page", type="primary", key="gen_pdf"):
-    with st.spinner("Generating PDF..."):
-        try:
-            # Use the complete function from the artifact above
-            pdf_buffer = generate_analysis_pdf_complete(
-                listings_df, sold_events_df,
-                brand_filter, category_filter, audience_filter, season_filter
-            )
-            filename = generate_pdf_filename(
-                brand_filter, category_filter, audience_filter, season_filter
-            )
-            
-            st.download_button(
-                label="Download PDF Report",
-                data=pdf_buffer,
-                file_name=filename,
-                mime="application/pdf",
-                key="download_pdf"
-            )
-            st.success(f"✅ Generated: {filename}")
-            
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
-            st.info("Install: pip install reportlab")
+    if st.button("Generate PDF from This Page", type="primary", key="gen_pdf"):
+        with st.spinner("Generating PDF..."):
+            try:
+                # Use the complete function from the artifact above
+                pdf_buffer = generate_analysis_pdf_complete(
+                    listings_df, sold_events_df,
+                    brand_filter, category_filter, audience_filter, season_filter
+                )
+                filename = generate_pdf_filename(
+                    brand_filter, category_filter, audience_filter, season_filter
+                )
+                
+                st.download_button(
+                    label="Download PDF Report",
+                    data=pdf_buffer,
+                    file_name=filename,
+                    mime="application/pdf",
+                    key="download_pdf"
+                )
+                st.success(f"✅ Generated: {filename}")
+                
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+                st.info("Install: pip install reportlab")
 
 # ============================================================================
 # PAGE 3: CALCULATOR (RESTORED OLD VERSION + Condition Filter, NO LIMIT)
