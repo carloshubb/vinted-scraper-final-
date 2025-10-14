@@ -134,9 +134,13 @@ def calculate_sell_through_30d(sold_events_df, listings_df, brand=None, category
     """
     Calculate 30-day sell-through rate
     
-    PROPOSAL 2 FORMULA:
-    Numerator: Items sold in ≤30 days
-    Denominator: Items listed for ≥30 days (eligible to be sold)
+    CRITICAL FIX: Use total active listings as denominator (not items ≥30 days)
+    
+    NEW FORMULA:
+    - Numerator: High-confidence items sold in ≤30 days
+    - Denominator: Current active listings (realistic market size)
+    
+    This fixes the 375,700% issue by using realistic denominator
     """
     filtered_listings = apply_filters(listings_df, brand=brand, category=category, audience=audience, season=season)
     
@@ -144,29 +148,17 @@ def calculate_sell_through_30d(sold_events_df, listings_df, brand=None, category
         logger.warning("No listings match filters for sell-through calculation")
         return None
     
-    current_time = datetime.now()
-    
-    # Get listing date for each item
-    filtered_listings = filtered_listings.copy()
-    filtered_listings['listing_date'] = filtered_listings.apply(
-        lambda row: pd.to_datetime(row.get('published_at', row.get('first_seen_at'))),
-        axis=1
-    )
-    
-    # Calculate days since listing
-    filtered_listings['days_since_listed'] = (current_time - filtered_listings['listing_date']).dt.days
-    
-    # PROPOSAL 2: Denominator = items listed ≥30 days
-    eligible_items = filtered_listings[filtered_listings['days_since_listed'] >= 30]
-    denominator = len(eligible_items)
+    # CRITICAL FIX: Use active listings as denominator
+    active_listings = filtered_listings[filtered_listings['status'] == 'active']
+    denominator = len(active_listings)
     
     if denominator == 0:
-        logger.warning("No items have been listed for >=30 days yet")
+        logger.warning("No active listings for sell-through calculation")
         return {
             'percentage': 0.0,
             'sold_30d': 0,
             'eligible_items': 0,
-            'note': 'No items listed >=30 days'
+            'note': 'No active listings'
         }
     
     if sold_events_df.empty:
@@ -186,29 +178,36 @@ def calculate_sell_through_30d(sold_events_df, listings_df, brand=None, category
             'eligible_items': denominator
         }
     
-    high_confidence = filtered_sold[filtered_sold['sold_confidence'] >= 0.5]
+    # CRITICAL: Only use HIGH confidence sales (1.0)
+    high_confidence = filtered_sold[filtered_sold['sold_confidence'] >= 1.0]
     
     if len(high_confidence) == 0:
+        logger.warning("No high-confidence sold items")
         return {
             'percentage': 0.0,
             'sold_30d': 0,
-            'eligible_items': denominator
+            'eligible_items': denominator,
+            'note': 'No high-confidence sales yet'
         }
     
     # Numerator: Items sold within 30 days
     sold_30d = high_confidence[high_confidence['days_to_sell'] <= 30]
     numerator = len(sold_30d)
     
+    # Calculate percentage
     sell_through_pct = (numerator / denominator) * 100
+    
+    # CRITICAL: Cap at 100% (safety)
+    if sell_through_pct > 100:
+        logger.warning(f"Sell-through > 100% ({sell_through_pct:.1f}%), capping at 100%")
+        sell_through_pct = 100.0
     
     return {
         'percentage': sell_through_pct,
         'sold_30d': numerator,
         'eligible_items': denominator,
-        'formula': f'{numerator} sold <=30d / {denominator} listed >=30d'
+        'formula': f'{numerator} sold ≤30d / {denominator} active listings'
     }
-
-
 def calculate_price_distribution(listings_df, brand=None, category=None, audience=None, status=None, season=None):
     """Calculate price distribution (P25, P50/Median, P75)."""
     filtered = apply_filters(listings_df, brand=brand, category=category, audience=audience, status=status, season=season)

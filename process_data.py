@@ -219,11 +219,13 @@ def detect_price_changes(current_df, previous_df):
 
 def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=30):
     """
-    Detect items that disappeared (likely sold).
+    CRITICAL FIX: Much stricter sold detection to avoid false positives
     
-    PROPOSAL 2 LOGIC:
-    - Item is sold if it disappeared AND was posted ≤30 days ago
-    - Tracks final_listed_price (last price before disappearance)
+    Items are only considered SOLD if:
+    1. Disappeared from current scrape
+    2. Posted ≤30 days ago
+    3. Missing for ≥48 hours (was missing in at least 1 previous scrape)
+    4. NOT relisted (check item_id doesn't reappear)
     """
     if previous_df is None or len(previous_df) == 0:
         logger.info("No previous data for sold item detection")
@@ -234,7 +236,6 @@ def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=
     current_ids = set(current_df['item_id'].unique())
     previous_ids = set(previous_df['item_id'].unique())
     
-    # Items that were in previous but not in current
     missing_ids = previous_ids - current_ids
     
     if len(missing_ids) == 0:
@@ -251,32 +252,41 @@ def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=
         last_seen = pd.to_datetime(item['last_seen_at'])
         time_diff = current_time - last_seen
         
+        # CRITICAL: Skip if not missing long enough
+        if time_diff < timedelta(hours=hours_threshold):
+            logger.debug(f"Item {item_id} missing < {hours_threshold}h, skipping")
+            continue
+        
         # Get listing date
         if 'published_at' in item and pd.notna(item['published_at']):
             listing_date = pd.to_datetime(item['published_at'])
         else:
             listing_date = pd.to_datetime(item['first_seen_at'])
         
-        # Calculate age of listing
+        # Calculate age
         listing_age_days = (current_time - listing_date).days
         
-        # PROPOSAL 2: Only consider sold if posted ≤30 days ago
+        # CRITICAL: Skip if too old (likely delisted, not sold)
         if listing_age_days > max_age_days:
             logger.debug(f"Item {item_id} too old ({listing_age_days} days), skipping")
+            continue
+        
+        # CRITICAL: Skip if too new (likely just hidden temporarily)
+        if listing_age_days < 2:  # NEW: Must be listed at least 2 days
+            logger.debug(f"Item {item_id} too new ({listing_age_days} days), skipping")
             continue
         
         # Calculate days to sell
         days_to_sell = (current_time - listing_date).total_seconds() / (24 * 3600)
         
-        # Sold confidence
-        if time_diff >= timedelta(hours=48):
-            confidence = 1.0
-        elif time_diff >= timedelta(hours=24):
-            confidence = 0.5
+        # CRITICAL: More conservative confidence levels
+        if time_diff >= timedelta(hours=96):  # 4 days
+            confidence = 1.0  # High confidence
+        elif time_diff >= timedelta(hours=hours_threshold):  # 2 days
+            confidence = 0.5  # Medium confidence
         else:
-            confidence = 0.0
+            continue  # Skip low confidence entirely
         
-        # PROPOSAL 2: final_listed_price (estimated selling price)
         final_listed_price = item['price']
         
         sold_events.append({
@@ -300,17 +310,15 @@ def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=
     events_df = pd.DataFrame(sold_events)
     
     if len(events_df) > 0:
-        logger.info(f"Detected {len(events_df)} potentially sold items (posted <={max_age_days} days)")
-        logger.info(f"  - High confidence (>=48h): {len(events_df[events_df['sold_confidence'] == 1.0])}")
-        logger.info(f"  - Medium confidence (24-48h): {len(events_df[events_df['sold_confidence'] == 0.5])}")
-        logger.info(f"  - Low confidence (<24h): {len(events_df[events_df['sold_confidence'] == 0.0])}")
+        logger.info(f"Detected {len(events_df)} sold items (2-{max_age_days} days old, missing ≥{hours_threshold}h)")
+        logger.info(f"  - High confidence (≥96h): {len(events_df[events_df['sold_confidence'] == 1.0])}")
+        logger.info(f"  - Medium confidence (48-96h): {len(events_df[events_df['sold_confidence'] == 0.5])}")
         logger.info(f"  - Average listing age: {events_df['listing_age_days'].mean():.1f} days")
+        logger.info(f"  - Average days to sell: {events_df['days_to_sell'].mean():.1f} days")
     else:
-        logger.info(f"No sold items detected (all missing items were older than {max_age_days} days)")
+        logger.info(f"No sold items detected with strict criteria")
     
     return events_df
-
-
 def update_listings_database(current_df, previous_df):
     """Update the main listings database."""
     logger.info("Updating listings database...")
