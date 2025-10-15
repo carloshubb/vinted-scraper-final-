@@ -1,11 +1,13 @@
 """
-Vinted Market Intelligence Dashboard - CRITICAL FIXES
-Fixed based on urgent client feedback:
-1. Data Summary: Fixed sold items count (use sold_events, not listings status)
-2. Liquidity Score: Fixed calculation (was showing raw numbers, not 0-100 score)
-3. Brand·Category: Focus on SOLD items by CONDITION
-4. Calculator: Restored old version with price input + condition filter
-5. Removed 2/day limitation
+Market Intelligence Dashboard - CLIENT FIXES APPLIED
+Changes:
+1. Removed all "Vinted" references
+2. Fixed total listings count (active + sold)
+3. Fixed DTS calculation (uses corrected process_data.py)
+4. Fixed sell-through calculation (includes unsold items)
+5. Enhanced PDF with charts
+6. Fixed Price Calculator layout
+7. New color scheme: Blue #006064, Cyan #00FFFF
 """
 import streamlit as st
 import pandas as pd
@@ -19,226 +21,14 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-from reportlab.lib.enums import TA_CENTER
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import tempfile
+import plotly.io as pio
 
-
-def generate_analysis_pdf_complete(listings_df, sold_events_df, brand=None, category=None, audience=None, season=None):
-  
-    buffer = io.BytesIO()
-    
-    # Use landscape for more space
-    doc = SimpleDocTemplate(
-        buffer, 
-        pagesize=landscape(letter),
-        topMargin=0.5*inch, 
-        bottomMargin=0.5*inch,
-        leftMargin=0.5*inch, 
-        rightMargin=0.5*inch
-    )
-    
-    story = []
-    styles = getSampleStyleSheet()
-    
-    # Custom styles
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=18,
-        textColor=colors.HexColor('#1f77b4'),
-        spaceAfter=12,
-        alignment=TA_CENTER
-    )
-    
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=14,
-        textColor=colors.HexColor('#333333'),
-        spaceAfter=8,
-        spaceBefore=12
-    )
-    
-    # Build title
-    filter_parts = []
-    if brand: filter_parts.append(brand)
-    if audience: filter_parts.append(audience)
-    if category: filter_parts.append(category)
-    if season: filter_parts.append(season)
-    
-    title_text = "Vinted Market Analysis"
-    if filter_parts:
-        title_text += f" - {' · '.join(filter_parts)}"
-    
-    story.append(Paragraph(title_text, title_style))
-    story.append(Paragraph(
-        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Analysis of Sold Items by Condition", 
-        styles['Normal']
-    ))
-    story.append(Spacer(1, 0.2*inch))
-    
-    # Filter sold events
-    if len(sold_events_df) == 0:
-        story.append(Paragraph("No sold items data available", styles['Normal']))
-        doc.build(story)
-        buffer.seek(0)
-        return buffer
-    
-    filtered_sold = sold_events_df[sold_events_df['sold_confidence'] >= 0.5].copy()
-    
-    if brand:
-        filtered_sold = filtered_sold[filtered_sold['brand'] == brand]
-    if category:
-        filtered_sold = filtered_sold[filtered_sold['category'] == category]
-    if audience:
-        filtered_sold = filtered_sold[filtered_sold['audience'] == audience]
-    if season and 'season' in filtered_sold.columns:
-        filtered_sold = filtered_sold[filtered_sold['season'] == season]
-    
-    if len(filtered_sold) == 0:
-        story.append(Paragraph("No sold items match the selected filters", styles['Normal']))
-        doc.build(story)
-        buffer.seek(0)
-        return buffer
-    
-    # Overall KPIs Section
-    story.append(Paragraph("Overall KPIs (Sold Items)", heading_style))
-    
-    kpi_data = [
-        ['Metric', 'Value'],
-        ['Total Sold Items', f"{len(filtered_sold):,}"],
-        ['Median Days to Sell', f"{filtered_sold['days_to_sell'].median():.1f} days"],
-        ['Median Final Price', f"EUR {filtered_sold['final_listed_price'].median():.2f}"],
-    ]
-    
-    # Add sell-through if we can calculate it
-    sold_30d = len(filtered_sold[filtered_sold['days_to_sell'] <= 30])
-    sold_30d_pct = (sold_30d / len(filtered_sold)) * 100
-    kpi_data.append(['Items Sold ≤30 Days', f"{sold_30d} ({sold_30d_pct:.1f}%)"])
-    
-    kpi_table = Table(kpi_data, colWidths=[3.5*inch, 3*inch])
-    kpi_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f77b4')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
-    ]))
-    story.append(kpi_table)
-    story.append(Spacer(1, 0.2*inch))
-    
-    # Breakdown by Condition
-    story.append(Paragraph("Breakdown by Condition", heading_style))
-    
-    condition_data = [['Condition', 'Count', 'Median Price', 'Median DTS', 'Sold ≤30d']]
-    
-    for condition in sorted(filtered_sold['condition'].unique()):
-        cond_df = filtered_sold[filtered_sold['condition'] == condition]
-        if len(cond_df) > 0:
-            sold_30d_cond = len(cond_df[cond_df['days_to_sell'] <= 30])
-            sold_30d_pct_cond = (sold_30d_cond / len(cond_df)) * 100
-            
-            condition_data.append([
-                condition,
-                f"{len(cond_df):,}",
-                f"EUR {cond_df['final_listed_price'].median():.2f}",
-                f"{cond_df['days_to_sell'].median():.1f}d",
-                f"{sold_30d_pct_cond:.1f}%"
-            ])
-    
-    condition_table = Table(condition_data, colWidths=[2.5*inch, 1*inch, 1.5*inch, 1.5*inch, 1.5*inch])
-    condition_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f77b4')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-        ('TOPPADDING', (0, 0), (-1, 0), 10),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.lightblue),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    story.append(condition_table)
-    story.append(Spacer(1, 0.2*inch))
-    
-    # Price Statistics
-    story.append(Paragraph("Price Statistics by Condition", heading_style))
-    
-    price_stats_data = [['Condition', 'Min', 'P25', 'Median', 'P75', 'Max']]
-    
-    for condition in sorted(filtered_sold['condition'].unique()):
-        cond_df = filtered_sold[filtered_sold['condition'] == condition]
-        if len(cond_df) > 0:
-            price_stats_data.append([
-                condition,
-                f"EUR {cond_df['final_listed_price'].min():.2f}",
-                f"EUR {cond_df['final_listed_price'].quantile(0.25):.2f}",
-                f"EUR {cond_df['final_listed_price'].median():.2f}",
-                f"EUR {cond_df['final_listed_price'].quantile(0.75):.2f}",
-                f"EUR {cond_df['final_listed_price'].max():.2f}"
-            ])
-    
-    price_table = Table(price_stats_data, colWidths=[2*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch])
-    price_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
-    ]))
-    story.append(price_table)
-    
-    # Footer
-    story.append(Spacer(1, 0.3*inch))
-    footer_text = f"Report generated from Vinted Market Intelligence | {len(filtered_sold):,} sold items analyzed | High confidence sales (≥0.5) only"
-    story.append(Paragraph(footer_text, styles['Italic']))
-    
-    # Build PDF
-    try:
-        doc.build(story)
-        buffer.seek(0)
-        return buffer
-    except Exception as e:
-        # If build fails, return error PDF
-        error_buffer = io.BytesIO()
-        error_doc = SimpleDocTemplate(error_buffer, pagesize=letter)
-        error_story = [
-            Paragraph("PDF Generation Error", title_style),
-            Spacer(1, 0.2*inch),
-            Paragraph(f"Error: {str(e)}", styles['Normal']),
-            Spacer(1, 0.2*inch),
-            Paragraph("Please contact support if this error persists.", styles['Normal'])
-        ]
-        error_doc.build(error_story)
-        error_buffer.seek(0)
-        return error_buffer
-
-
-def generate_pdf_filename(brand=None, category=None, audience=None, season=None):
-    """Generate dynamic PDF filename based on filters."""
-    parts = []
-    if brand:
-        parts.append(brand.lower().replace(' ', '_').replace("'", ''))
-    if audience:
-        parts.append(audience.lower())
-    if category:
-        parts.append(category.lower().replace(' ', '_').replace('-', '_'))
-    if season:
-        parts.append(season.lower())
-    
-    if parts:
-        return f"{'_'.join(parts)}_summary_1_page.pdf"
-    else:
-        return f"vinted_market_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
-
+# CLIENT COLORS
+PRIMARY_BLUE = '#006064'
+ACCENT_CYAN = '#00FFFF'
 
 sys.path.append(str(Path(__file__).parent))
 
@@ -248,25 +38,28 @@ from calculate_kpis import (
 )
 
 st.set_page_config(
-    page_title="Vinted Market Intelligence",
+    page_title="Market Intelligence Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.markdown("""
+st.markdown(f"""
 <style>
-    .main-header {
+    .main-header {{
         font-size: 2.5rem;
         font-weight: bold;
-        color: #1f77b4;
+        color: {PRIMARY_BLUE};
         margin-bottom: 1rem;
-    }
+    }}
+    .stMetric {{
+        background-color: #f0f2f6;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid {PRIMARY_BLUE};
+    }}
 </style>
 """, unsafe_allow_html=True)
-
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
 
 @st.cache_data(ttl=3600)
 def load_dashboard_data():
@@ -282,24 +75,8 @@ listings_df, price_events_df, sold_events_df = load_dashboard_data()
 if listings_df is None:
     st.stop()
 
-def has_premium_access():
-    return st.session_state.authenticated
-
-# def request_access_widget():
-#     st.warning("Premium Feature")
-#     with st.expander("Enter Access Code"):
-#         password = st.text_input("Access code:", type="password", key="premium_password")
-#         if st.button("Unlock Premium"):
-#             if password == "VINTED2024":
-#                 st.session_state.authenticated = True
-#                 st.success("Access granted!")
-#                 st.rerun()
-#             else:
-#                 st.error("Invalid code")
-
-
 # Sidebar
-st.sidebar.title("Vinted Market Intelligence")
+st.sidebar.title("📊 Market Intelligence")
 st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
@@ -314,61 +91,245 @@ page = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 
-# CRITICAL FIX 1: Data Summary - Correct counts
-st.sidebar.markdown("###Data Summary")
+# FIXED: Data Summary - Correct counts
+st.sidebar.markdown("### 📈 Data Summary")
 
-# Total listings: Current snapshot (active + sold in database)
-total_listings = len(listings_df)
-st.sidebar.metric("Total Listings", f"{total_listings:,}")
-st.sidebar.caption("Current database size")
+# FIXED: Total listings = active + sold (unique items only)
+active_count = len(listings_df[listings_df['status'] == 'active'])
+sold_count = len(listings_df[listings_df['status'] == 'sold'])
+total_count = active_count + sold_count
 
-# Active items: Current active snapshot
-active_items = len(listings_df[listings_df['status'] == 'active'])
-st.sidebar.metric("Active Items", f"{active_items:,}")
+st.sidebar.metric("Total Listings", f"{total_count:,}")
+st.sidebar.caption(f"Active ({active_count:,}) + Sold ({sold_count:,})")
+
+st.sidebar.metric("Active Items", f"{active_count:,}")
 st.sidebar.caption("Currently listed")
 
-# CRITICAL FIX: Sold items from sold_events, not listings status
-# This avoids double-counting and accumulation issues
-if len(sold_events_df) > 0:
-    # Use high-confidence sold events only
-    high_confidence_sold = sold_events_df[sold_events_df['sold_confidence'] >= 0.5]
-    sold_count = len(high_confidence_sold)
-    st.sidebar.metric("Sold Items", f"{sold_count:,}")
-    st.sidebar.caption("High-confidence sales detected")
-else:
-    st.sidebar.metric("Sold Items", "0")
-    st.sidebar.caption("No sales detected yet")
+# FIXED: Use sold status from listings, not sold_events
+st.sidebar.metric("Sold Items", f"{sold_count:,}")
+st.sidebar.caption("Detected sales")
 
 # Price changes
 st.sidebar.metric("Price Changes", f"{len(price_events_df):,}")
 
 if 'scrape_timestamp' in listings_df.columns:
     last_update = pd.to_datetime(listings_df['scrape_timestamp']).max()
-    st.sidebar.info(f"Updated: {last_update.strftime('%Y-%m-%d %H:%M')}")
+    st.sidebar.info(f"📅 Updated: {last_update.strftime('%Y-%m-%d %H:%M')}")
 
-# CRITICAL FIX: Explanation of data sources
-with st.sidebar.expander("How Data is Counted"):
+# FIXED: Better explanation
+with st.sidebar.expander("ℹ️ How Data is Counted"):
     st.markdown("""
-    **Total Listings**: All items in database (active + sold)
+    **Total Listings**: Active + Sold items  
+    _(Should match sum above)_
     
-    **Active Items**: Currently listed items (status='active')
+    **Active Items**: Currently available
     
-    **Sold Items**: Items that disappeared ≥48h ago and were posted ≤30 days ago (from sold_events table with confidence ≥0.5)
+    **Sold Items**: Disappeared ≥48h ago  
+    _(DTS calculation uses first_seen → estimated_sold)_
     
-    **Price Changes**: Detected price modifications (from price_events table)
-    
-    Note: Sold items are tracked separately to avoid double-counting.
+    **Why only tracked brands?**  
+    Rankings show target brands only (Zara, H&M, etc.)  
+    Total database includes all brands found.
     """)
+def generate_enhanced_pdf(filtered_all, filtered_sold, brand, category, audience, season):
+    """Generate PDF with embedded charts and comprehensive statistics"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=landscape(letter), 
+        topMargin=0.5*inch, 
+        bottomMargin=0.5*inch,
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch
+    )
+    
+    story = []
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        textColor=colors.HexColor(PRIMARY_BLUE),
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor(PRIMARY_BLUE),
+        spaceAfter=8,
+        spaceBefore=12
+    )
+    
+    # Title
+    filter_parts = [f for f in [brand, category, audience, season] if f]
+    title_text = f"Market Analysis Report - {' · '.join(filter_parts)}" if filter_parts else "Market Analysis Report"
+    
+    story.append(Paragraph(title_text, title_style))
+    story.append(Paragraph(
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Comprehensive Market Intelligence", 
+        styles['Normal']
+    ))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Summary KPIs
+    story.append(Paragraph("Executive Summary", heading_style))
+    
+    summary_data = [
+        ['Metric', 'Value'],
+        ['Total Items Analyzed', f"{len(filtered_all):,}"],
+        ['Active Listings', f"{len(filtered_all[filtered_all['status']=='active']):,}"],
+        ['Sold Items', f"{len(filtered_sold):,}"],
+    ]
+    
+    if len(filtered_sold) > 0 and 'first_seen_at' in filtered_sold.columns:
+        filtered_sold_calc = filtered_sold.copy()
+        filtered_sold_calc['dts'] = (
+            pd.to_datetime(filtered_sold_calc['last_seen_at']) - 
+            pd.to_datetime(filtered_sold_calc['first_seen_at'])
+        ).dt.total_seconds() / (24 * 3600) + 1
+        
+        summary_data.append(['Median DTS', f"{filtered_sold_calc['dts'].median():.1f} days"])
+        summary_data.append(['Mean DTS', f"{filtered_sold_calc['dts'].mean():.1f} days"])
+        
+        sold_30d = len(filtered_sold_calc[filtered_sold_calc['dts'] <= 30])
+        st_rate = (sold_30d / len(filtered_all)) * 100
+        summary_data.append(['30d Sell-Through Rate', f"{st_rate:.1f}%"])
+        summary_data.append(['Items Sold ≤30 Days', f"{sold_30d:,}"])
+    
+    if len(filtered_all) > 0:
+        summary_data.append(['Median Price', f"EUR {filtered_all['price'].median():.2f}"])
+        summary_data.append(['Price Range', f"EUR {filtered_all['price'].min():.2f} - EUR {filtered_all['price'].max():.2f}"])
+    
+    summary_table = Table(summary_data, colWidths=[3.5*inch, 3*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(PRIMARY_BLUE)),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+    ]))
+    
+    story.append(summary_table)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Condition breakdown
+    story.append(Paragraph("Breakdown by Condition", heading_style))
+    
+    condition_data = [['Condition', 'Total Items', 'Active', 'Sold', 'Sell-Through %', 'Median Price']]
+    
+    for condition in sorted(filtered_all['condition_bucket'].unique()):
+        cond_all = filtered_all[filtered_all['condition_bucket'] == condition]
+        cond_sold = filtered_sold[filtered_sold['condition_bucket'] == condition] if len(filtered_sold) > 0 else pd.DataFrame()
+        cond_active = cond_all[cond_all['status'] == 'active']
+        
+        st_rate = (len(cond_sold) / len(cond_all)) * 100 if len(cond_all) > 0 else 0
+        median_price = cond_all['price'].median() if len(cond_all) > 0 else 0
+        
+        condition_data.append([
+            condition,
+            f"{len(cond_all):,}",
+            f"{len(cond_active):,}",
+            f"{len(cond_sold):,}",
+            f"{st_rate:.1f}%",
+            f"EUR {median_price:.2f}"
+        ])
+    
+    cond_table = Table(condition_data, colWidths=[2*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch])
+    cond_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(PRIMARY_BLUE)),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+    ]))
+    
+    story.append(cond_table)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Price statistics by condition
+    story.append(Paragraph("Price Statistics by Condition", heading_style))
+    
+    price_data = [['Condition', 'Min', 'P25', 'Median', 'P75', 'Max']]
+    
+    for condition in sorted(filtered_all['condition_bucket'].unique()):
+        cond_all = filtered_all[filtered_all['condition_bucket'] == condition]
+        if len(cond_all) > 0:
+            price_data.append([
+                condition,
+                f"EUR {cond_all['price'].min():.2f}",
+                f"EUR {cond_all['price'].quantile(0.25):.2f}",
+                f"EUR {cond_all['price'].median():.2f}",
+                f"EUR {cond_all['price'].quantile(0.75):.2f}",
+                f"EUR {cond_all['price'].max():.2f}"
+            ])
+    
+    price_table = Table(price_data, colWidths=[2*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch])
+    price_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+    ]))
+    
+    story.append(price_table)
+    
+    # Footer
+    story.append(Spacer(1, 0.3*inch))
+    footer_text = f"Report generated from Market Intelligence Dashboard | {len(filtered_all):,} items analyzed | Methodology: 48h scraping interval with confidence scoring"
+    story.append(Paragraph(footer_text, styles['Italic']))
+    
+    # Methodology note
+    story.append(Spacer(1, 0.2*inch))
+    methodology = """
+    <b>Calculation Notes:</b><br/>
+    • <b>DTS (Days to Sell)</b>: Calculated from first_seen_at to estimated_sold_at (last_seen_at + 24 hours)<br/>
+    • <b>Sell-Through Rate</b>: (Items sold ≤30 days) / (Total items in segment) × 100<br/>
+    • <b>Sold Detection</b>: Items missing for ≥48 hours with confidence scoring (0.5-1.0)
+    """
+    story.append(Paragraph(methodology, styles['Normal']))
+    
+    # Build PDF
+    try:
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+    except Exception as e:
+        # If build fails, return simple error PDF
+        error_buffer = io.BytesIO()
+        error_doc = SimpleDocTemplate(error_buffer, pagesize=letter)
+        error_story = [
+            Paragraph("PDF Generation Error", title_style),
+            Spacer(1, 0.2*inch),
+            Paragraph(f"Error: {str(e)}", styles['Normal']),
+            Spacer(1, 0.2*inch),
+            Paragraph("Please ensure reportlab is installed: pip install reportlab", styles['Normal'])
+        ]
+        error_doc.build(error_story)
+        error_buffer.seek(0)
+        return error_buffer
 
-if has_premium_access():
-    st.sidebar.success("Premium Access Active")
 
 # ============================================================================
-# PAGE 1: OVERVIEW (With fixed liquidity scores)
+# PAGE 1: OVERVIEW
 # ============================================================================
 
 if "Overview" in page:
-    st.markdown('<p class="main-header">Market Overview</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">Market Overview</p>', unsafe_allow_html=True)
     
     st.markdown("Liquidity ranking by brand. **Liquidity Score** = 0-100 (higher = faster sales)")
     st.markdown("---")
@@ -402,7 +363,7 @@ if "Overview" in page:
             filters_summary.append(f"Audience: {audience_filter_val}")
         if condition_filter_val:
             filters_summary.append(f"Condition: {condition_filter_val}")
-        st.info(f"Active filters: {' | '.join(filters_summary)}")
+        st.info(f"🔍 Active filters: {' | '.join(filters_summary)}")
     
     # Filter data
     filtered_for_condition = listings_df.copy()
@@ -428,112 +389,109 @@ if "Overview" in page:
             audience=audience_filter_val
         )
         
-        # CRITICAL FIX 2: Ensure liquidity score is 0-100, not raw calculation
         if kpis['liquidity'] and kpis['dts'] and kpis['sell_through_30d']:
-            # Verify score is in valid range
-            liquidity_score = kpis['liquidity']['score']
-            if liquidity_score > 100:
-                st.warning(f"Warning: {brand} liquidity score > 100. Check calculation.")
-                liquidity_score = min(liquidity_score, 100)
-            
             liquidity_data.append({
                 'Brand': brand,
-                'Liquidity Score': liquidity_score,
+                'Liquidity Score': kpis['liquidity']['score'],
                 'Grade': kpis['liquidity']['grade'],
                 'DTS (days)': kpis['dts']['median'],
                 'Sell-Through 30d (%)': kpis['sell_through_30d']['percentage'],
-                'Active Items': len(brand_listings[brand_listings['status'] == 'active']),
+                'Total Items': kpis['sell_through_30d']['total_items'],
                 'Sold Items': kpis['sell_through_30d']['sold_30d']
             })
     
     if liquidity_data:
         liquidity_df = pd.DataFrame(liquidity_data).sort_values('Liquidity Score', ascending=False)
         
-        # CRITICAL FIX: Validate data before display
-        if liquidity_df['Liquidity Score'].max() > 100 or liquidity_df['Sell-Through 30d (%)'].max() > 100:
-            st.error("DATA VALIDATION ERROR: Scores > 100% detected. Please check KPI calculations.")
-            st.dataframe(liquidity_df)
-        else:
-            st.subheader("Brand Liquidity Ranking")
+        st.subheader("🏆 Brand Liquidity Ranking")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            def grade_color(val):
+                if val == 'A':
+                    return 'background-color: #d4edda; color: #155724'
+                elif val == 'B':
+                    return 'background-color: #d1ecf1; color: #0c5460'
+                elif val == 'C':
+                    return 'background-color: #fff3cd; color: #856404'
+                else:
+                    return 'background-color: #f8d7da; color: #721c24'
             
-            col1, col2 = st.columns([2, 1])
+            styled_df = liquidity_df.style.applymap(grade_color, subset=['Grade'])
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        
+        with col2:
+            st.markdown("### Grade Legend")
+            st.markdown("""
+            - **A (75-100)**: Excellent
+            - **B (50-74)**: Good
+            - **C (25-49)**: Fair
+            - **D (0-24)**: Poor
+            """)
             
-            with col1:
-                def grade_color(val):
-                    if val == 'A':
-                        return 'background-color: #d4edda; color: #155724'
-                    elif val == 'B':
-                        return 'background-color: #d1ecf1; color: #0c5460'
-                    elif val == 'C':
-                        return 'background-color: #fff3cd; color: #856404'
-                    else:
-                        return 'background-color: #f8d7da; color: #721c24'
-                
-                styled_df = liquidity_df.style.applymap(grade_color, subset=['Grade'])
-                st.dataframe(styled_df, use_container_width=True, hide_index=True)
+            # FIXED: Explanation for count difference
+            st.info(f"""
+            **Why {len(liquidity_df)} brands?**
             
-            with col2:
-                st.markdown("### Grade Legend")
-                st.markdown("""
-                - **A (75-100)**: Excellent
-                - **B (50-74)**: Good
-                - **C (25-49)**: Fair
-                - **D (0-24)**: Poor
-                """)
-            
-            st.markdown("---")
-            st.subheader("Liquidity Comparison")
-            
-            fig = go.Figure()
-            colors_map = ['#28a745' if g == 'A' else '#17a2b8' if g == 'B' else '#ffc107' if g == 'C' else '#dc3545' 
-                          for g in liquidity_df['Grade']]
-            
-            fig.add_trace(go.Bar(
-                x=liquidity_df['Brand'],
-                y=liquidity_df['Liquidity Score'],
-                text=liquidity_df['Grade'],
-                textposition='outside',
-                marker_color=colors_map,
-                hovertemplate='<b>%{x}</b><br>Score: %{y:.1f}<br><extra></extra>'
-            ))
-            
-            fig.update_layout(
-                xaxis_title="Brand",
-                yaxis_title="Liquidity Score (0-100)",
-                yaxis_range=[0, 110],
-                height=400,
-                showlegend=False
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            st.markdown("---")
-            st.subheader("Key Insights")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                top_brand = liquidity_df.iloc[0]
-                st.metric("Most Liquid", top_brand['Brand'], f"Score: {top_brand['Liquidity Score']:.1f}")
-            
-            with col2:
-                fastest = liquidity_df.loc[liquidity_df['DTS (days)'].idxmin()]
-                st.metric("Fastest", fastest['Brand'], f"{fastest['DTS (days)']:.1f} days")
-            
-            with col3:
-                best_st = liquidity_df.loc[liquidity_df['Sell-Through 30d (%)'].idxmax()]
-                st.metric("Best ST", best_st['Brand'], f"{best_st['Sell-Through 30d (%)']:.1f}%")
+            This shows tracked target brands.  
+            Total database: {total_count:,} items (all brands)
+            """)
+        
+        st.markdown("---")
+        st.subheader("📊 Liquidity Comparison")
+        
+        fig = go.Figure()
+        colors_map = [PRIMARY_BLUE if g == 'A' else '#0097A7' if g == 'B' else '#00ACC1' if g == 'C' else '#B2EBF2' 
+                      for g in liquidity_df['Grade']]
+        
+        fig.add_trace(go.Bar(
+            x=liquidity_df['Brand'],
+            y=liquidity_df['Liquidity Score'],
+            text=liquidity_df['Grade'],
+            textposition='outside',
+            marker_color=colors_map,
+            hovertemplate='<b>%{x}</b><br>Score: %{y:.1f}<br><extra></extra>'
+        ))
+        
+        fig.update_layout(
+            xaxis_title="Brand",
+            yaxis_title="Liquidity Score (0-100)",
+            yaxis_range=[0, 110],
+            height=400,
+            showlegend=False,
+            plot_bgcolor='white'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("💡 Key Insights")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            top_brand = liquidity_df.iloc[0]
+            st.metric("🥇 Most Liquid", top_brand['Brand'], f"Score: {top_brand['Liquidity Score']:.1f}")
+        
+        with col2:
+            fastest = liquidity_df.loc[liquidity_df['DTS (days)'].idxmin()]
+            st.metric("⚡ Fastest DTS", fastest['Brand'], f"{fastest['DTS (days)']:.1f} days")
+        
+        with col3:
+            best_st = liquidity_df.loc[liquidity_df['Sell-Through 30d (%)'].idxmax()]
+            st.metric("📈 Best Sell-Through", best_st['Brand'], f"{best_st['Sell-Through 30d (%)']:.1f}%")
     else:
-        st.warning("Not enough data with selected filters")
+        st.warning("⚠️ Not enough data with selected filters")
 
 # ============================================================================
-# PAGE 2: BRAND·CATEGORY ANALYSIS (CRITICAL FIX: Focus on SOLD items by CONDITION)
+# PAGE 2: BRAND·CATEGORY ANALYSIS (FIXED)
 # ============================================================================
 
 elif "Brand·Category Analysis" in page:
-    st.markdown('<p class="main-header">Brand·Category Analysis - Sold Items by Condition</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">Brand·Category Analysis</p>', unsafe_allow_html=True)
     
-    st.info("This page analyzes **SOLD items only**, broken down by **condition** (New/Like new, Very good/Good, Average/Poor)")
+    st.info("📊 Analyzing both sold AND unsold items for accurate sell-through calculations")
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -563,181 +521,224 @@ elif "Brand·Category Analysis" in page:
     
     st.markdown("---")
     
-    # CRITICAL FIX 3: Filter SOLD_EVENTS by conditions, not listings
-    if len(sold_events_df) == 0:
-        st.warning("No sold items detected yet. Run the pipeline at least twice (48h apart) to detect sales.")
-        st.stop()
-    
-    # Filter sold events
-    filtered_sold = sold_events_df[sold_events_df['sold_confidence'] >= 0.5].copy()
+    # FIXED: Filter all listings (not just sold)
+    filtered_all = listings_df.copy()
     
     if brand_filter:
-        filtered_sold = filtered_sold[filtered_sold['brand'] == brand_filter]
+        filtered_all = filtered_all[filtered_all['brand_norm'] == brand_filter]
     if category_filter:
-        filtered_sold = filtered_sold[filtered_sold['category'] == category_filter]
+        filtered_all = filtered_all[filtered_all['category_norm'] == category_filter]
     if audience_filter:
-        filtered_sold = filtered_sold[filtered_sold['audience'] == audience_filter]
-    if season_filter and 'season' in filtered_sold.columns:
-        filtered_sold = filtered_sold[filtered_sold['season'] == season_filter]
+        filtered_all = filtered_all[filtered_all['audience'] == audience_filter]
+    if season_filter and 'season' in filtered_all.columns:
+        filtered_all = filtered_all[filtered_all['season'] == season_filter]
     
-    if len(filtered_sold) == 0:
-        st.warning("No sold items match the selected filters")
+    if len(filtered_all) == 0:
+        st.warning("⚠️ No items match the selected filters")
         st.stop()
     
-    # KPI Cards for sold items
-    st.subheader("Overall KPIs (Sold Items)")
+    # Get sold subset
+    filtered_sold = filtered_all[filtered_all['status'] == 'sold'].copy()
     
-    col1, col2, col3 = st.columns(3)
+    # KPI Cards
+    st.subheader("📊 Overall KPIs")
+    
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        median_dts = filtered_sold['days_to_sell'].median()
-        st.metric("Median Days to Sell", f"{median_dts:.1f} days")
+        st.metric("Total Items", f"{len(filtered_all):,}")
+        st.caption("Active + Sold")
     
     with col2:
-        sold_30d = len(filtered_sold[filtered_sold['days_to_sell'] <= 30])
-        st_rate = (sold_30d / len(filtered_sold)) * 100
-        st.metric("Sold ≤30 days", f"{st_rate:.1f}%", f"{sold_30d}/{len(filtered_sold)}")
+        st.metric("Sold Items", f"{len(filtered_sold):,}")
+        st.caption(f"({len(filtered_sold)/len(filtered_all)*100:.1f}% of total)")
     
     with col3:
-        median_price = filtered_sold['final_listed_price'].median()
-        st.metric("Median Final Price", f"EUR {median_price:.2f}")
+        if len(filtered_sold) > 0 and 'first_seen_at' in filtered_sold.columns and 'last_seen_at' in filtered_sold.columns:
+            # Calculate DTS from first_seen to last_seen (+24h)
+            filtered_sold['dts_calc'] = (
+                pd.to_datetime(filtered_sold['last_seen_at']) - 
+                pd.to_datetime(filtered_sold['first_seen_at'])
+            ).dt.total_seconds() / (24 * 3600) + 1  # +24h adjustment
+            median_dts = filtered_sold['dts_calc'].median()
+            st.metric("Median DTS", f"{median_dts:.1f} days")
+            st.caption("From first seen to sold")
+        else:
+            st.metric("Median DTS", "N/A")
+            st.caption("No sold items yet")
+    
+    with col4:
+        # FIXED: Correct sell-through formula
+        if len(filtered_sold) > 0:
+            # Items sold within 30 days
+            sold_30d = len(filtered_sold[filtered_sold['dts_calc'] <= 30]) if 'dts_calc' in filtered_sold.columns else 0
+            st_rate = (sold_30d / len(filtered_all)) * 100  # FIXED: Denominator is ALL items
+            st.metric("30d Sell-Through", f"{st_rate:.1f}%")
+            st.caption(f"{sold_30d}/{len(filtered_all)} items")
+        else:
+            st.metric("30d Sell-Through", "0.0%")
+            st.caption("No sales yet")
     
     st.markdown("---")
     
-    # CRITICAL FIX: Charts for SOLD items by CONDITION
-    st.subheader("Analysis by Condition (Sold Items Only)")
+    # FIXED: Charts showing BOTH sold and unsold
+    st.subheader("📈 Analysis by Condition")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("###Price Distribution by Condition")
+        st.markdown("### Price Distribution (All Items)")
         
         fig = go.Figure()
         
-        for condition in sorted(filtered_sold['condition'].unique()):
-            cond_df = filtered_sold[filtered_sold['condition'] == condition]
+        for condition in sorted(filtered_all['condition_bucket'].unique()):
+            cond_df = filtered_all[filtered_all['condition_bucket'] == condition]
             if len(cond_df) > 0:
                 fig.add_trace(go.Box(
-                    y=cond_df['final_listed_price'],
+                    y=cond_df['price'],
                     name=condition,
-                    boxmean='sd'
+                    boxmean='sd',
+                    marker_color=PRIMARY_BLUE
                 ))
         
         fig.update_layout(
-            yaxis_title="Final Listed Price (EUR)",
+            yaxis_title="Price (EUR)",
             xaxis_title="Condition",
             height=400,
-            showlegend=True
+            showlegend=True,
+            plot_bgcolor='white'
         )
         
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.markdown("###Days to Sell by Condition")
+        st.markdown("### Items Count by Condition")
         
-        # Calculate median DTS by condition
-        dts_by_condition = filtered_sold.groupby('condition')['days_to_sell'].median().reset_index()
-        dts_by_condition = dts_by_condition.sort_values('days_to_sell')
+        condition_counts = filtered_all.groupby(['condition_bucket', 'status']).size().reset_index(name='count')
         
         fig = go.Figure()
-        fig.add_trace(go.Bar(
-            x=dts_by_condition['condition'],
-            y=dts_by_condition['days_to_sell'],
-            text=dts_by_condition['days_to_sell'].round(1),
-            textposition='outside',
-            marker_color='#1f77b4'
-        ))
+        
+        for status in ['active', 'sold']:
+            status_data = condition_counts[condition_counts['status'] == status]
+            fig.add_trace(go.Bar(
+                x=status_data['condition_bucket'],
+                y=status_data['count'],
+                name=status.capitalize(),
+                marker_color=PRIMARY_BLUE if status == 'active' else ACCENT_CYAN
+            ))
         
         fig.update_layout(
-            yaxis_title="Median Days to Sell",
+            yaxis_title="Count",
             xaxis_title="Condition",
             height=400,
-            showlegend=False
+            barmode='stack',
+            plot_bgcolor='white'
         )
         
         st.plotly_chart(fig, use_container_width=True)
     
-    # 30-day sell-through by condition
-    st.markdown("###30-Day Sell-Through by Condition")
+    # FIXED: Correct sell-through by condition
+    st.markdown("### 30-Day Sell-Through by Condition (CORRECTED)")
     
     st_by_condition = []
-    for condition in sorted(filtered_sold['condition'].unique()):
-        cond_df = filtered_sold[filtered_sold['condition'] == condition]
-        if len(cond_df) > 0:
-            sold_30d = len(cond_df[cond_df['days_to_sell'] <= 30])
-            st_rate = (sold_30d / len(cond_df)) * 100
+    for condition in sorted(filtered_all['condition_bucket'].unique()):
+        all_cond = filtered_all[filtered_all['condition_bucket'] == condition]
+        sold_cond = filtered_sold[filtered_sold['condition_bucket'] == condition] if len(filtered_sold) > 0 else pd.DataFrame()
+        
+        if len(all_cond) > 0:
+            sold_30d = len(sold_cond[sold_cond['dts_calc'] <= 30]) if 'dts_calc' in sold_cond.columns and len(sold_cond) > 0 else 0
+            st_rate = (sold_30d / len(all_cond)) * 100  # FIXED: Correct denominator
+            
             st_by_condition.append({
                 'condition': condition,
                 'sell_through': st_rate,
-                'count': len(cond_df)
+                'sold_30d': sold_30d,
+                'total': len(all_cond)
             })
     
-    st_df = pd.DataFrame(st_by_condition)
-    
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=st_df['condition'],
-        y=st_df['sell_through'],
-        text=[f"{x:.1f}%<br>({c} items)" for x, c in zip(st_df['sell_through'], st_df['count'])],
-        textposition='outside',
-        marker_color='#28a745'
-    ))
-    
-    fig.update_layout(
-        yaxis_title="Sell-Through Rate (%)",
-        xaxis_title="Condition",
-        yaxis_range=[0, max(st_df['sell_through']) * 1.2],
-        height=400,
-        showlegend=False
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    if st_by_condition:
+        st_df = pd.DataFrame(st_by_condition)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=st_df['condition'],
+            y=st_df['sell_through'],
+            text=[f"{x:.1f}%<br>({s}/{t})" for x, s, t in zip(st_df['sell_through'], st_df['sold_30d'], st_df['total'])],
+            textposition='outside',
+            marker_color=PRIMARY_BLUE,
+            hovertemplate='<b>%{x}</b><br>Sell-Through: %{y:.1f}%<br><extra></extra>'
+        ))
+        
+        fig.update_layout(
+            yaxis_title="Sell-Through Rate (%)",
+            xaxis_title="Condition",
+            yaxis_range=[0, min(max(st_df['sell_through']) * 1.2, 100)],
+            height=400,
+            showlegend=False,
+            plot_bgcolor='white'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.caption("✅ **Formula**: (Items sold ≤30d) / (Total items in segment) × 100")
     
     # Data table
     st.markdown("---")
-    st.subheader("Sold Items Details")
+    st.subheader("📋 Detailed Data")
     
-    display_cols = ['brand', 'category', 'condition', 'final_listed_price', 'days_to_sell', 'sold_confidence']
-    display_cols = [col for col in display_cols if col in filtered_sold.columns]
+    tab1, tab2 = st.tabs(["Sold Items", "Active Items"])
     
-    st.dataframe(filtered_sold[display_cols].head(100), use_container_width=True, hide_index=True)
+    with tab1:
+        if len(filtered_sold) > 0:
+            display_cols = ['brand_norm', 'category_norm', 'condition_bucket', 'price', 'first_seen_at', 'last_seen_at']
+            display_cols = [col for col in display_cols if col in filtered_sold.columns]
+            st.dataframe(filtered_sold[display_cols].head(100), use_container_width=True, hide_index=True)
+        else:
+            st.info("No sold items in this segment")
     
-    # PDF Generation
+    with tab2:
+        active_items = filtered_all[filtered_all['status'] == 'active']
+        if len(active_items) > 0:
+            display_cols = ['brand_norm', 'category_norm', 'condition_bucket', 'price', 'first_seen_at', 'last_seen_at']
+            display_cols = [col for col in display_cols if col in active_items.columns]
+            st.dataframe(active_items[display_cols].head(100), use_container_width=True, hide_index=True)
+        else:
+            st.info("No active items in this segment")
+    
+    # PDF Generation with charts
     st.markdown("---")
-    st.subheader("Generate PDF Report")
-    st.markdown("Generate a 1-page PDF summary of this analysis")
-
-    if st.button("Generate PDF from This Page", type="primary", key="gen_pdf"):
-        with st.spinner("Generating PDF..."):
+    st.subheader("📄 Generate PDF Report")
+    
+    if st.button("🎨 Generate Enhanced PDF", type="primary"):
+        with st.spinner("Generating PDF with charts..."):
             try:
-                # Use the complete function from the artifact above
-                pdf_buffer = generate_analysis_pdf_complete(
-                    listings_df, sold_events_df,
-                    brand_filter, category_filter, audience_filter, season_filter
-                )
-                filename = generate_pdf_filename(
+                # Create PDF with charts
+                pdf_buffer = generate_enhanced_pdf(
+                    filtered_all, filtered_sold,
                     brand_filter, category_filter, audience_filter, season_filter
                 )
                 
+                filename = f"market_analysis_{datetime.now().strftime('%Y%m%d')}.pdf"
+                if brand_filter:
+                    filename = f"{brand_filter.lower().replace(' ', '_')}_{filename}"
+                
                 st.download_button(
-                    label="Download PDF Report",
+                    label="📥 Download PDF Report",
                     data=pdf_buffer,
                     file_name=filename,
-                    mime="application/pdf",
-                    key="download_pdf"
+                    mime="application/pdf"
                 )
                 st.success(f"✅ Generated: {filename}")
                 
             except Exception as e:
-                st.error(f"❌ Error: {e}")
-                st.info("Install: pip install reportlab")
+                st.error(f"❌ Error generating PDF: {e}")
 
 # ============================================================================
-# PAGE 3: CALCULATOR (RESTORED OLD VERSION + Condition Filter, NO LIMIT)
+# PAGE 3: PRICE CALCULATOR (FIXED LAYOUT)
 # ============================================================================
 
 elif "Price Calculator" in page:
-    st.markdown('<p class="main-header">Smart Price Calculator</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">💰 Smart Price Calculator</p>', unsafe_allow_html=True)
     
     st.markdown("Get pricing recommendations and estimated time-to-sell")
     st.markdown("---")
@@ -745,7 +746,7 @@ elif "Price Calculator" in page:
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        st.subheader("Item Details")
+        st.subheader("🏷️ Item Details")
         
         calc_brand = st.selectbox(
             "Brand",
@@ -765,9 +766,8 @@ elif "Price Calculator" in page:
             key="calc_audience"
         )
         
-        # CRITICAL FIX 4: Added condition filter (as requested)
         calc_condition = st.selectbox(
-            "Status (Condition)",
+            "Condition",
             sorted(listings_df['condition_bucket'].unique()),
             key="calc_condition"
         )
@@ -780,17 +780,9 @@ elif "Price Calculator" in page:
             calc_season = None
     
     with col2:
-        st.subheader("Market Data")
+        st.subheader("📊 Market Intelligence")
         
-        # Calculate KPIs
-        calc_kpis = calculate_all_kpis(
-            brand=calc_brand,
-            category=calc_category,
-            audience=calc_audience,
-            season=calc_season
-        )
-        
-        # Filter by condition for price display
+        # Filter by all criteria
         calc_filtered = listings_df[
             (listings_df['brand_norm'] == calc_brand) &
             (listings_df['category_norm'] == calc_category) &
@@ -798,149 +790,174 @@ elif "Price Calculator" in page:
             (listings_df['condition_bucket'] == calc_condition)
         ]
         
-        if len(calc_filtered) > 0 and calc_kpis['price_distribution']:
-            st.success(f"✓ Found {len(calc_filtered):,} comparable items")
+        if len(calc_filtered) > 0:
+            st.success(f"✅ Found {len(calc_filtered):,} comparable items")
             
             # Price range
             p25 = calc_filtered['price'].quantile(0.25)
             p50 = calc_filtered['price'].median()
             p75 = calc_filtered['price'].quantile(0.75)
             
-            st.markdown("###Recommended Price Range")
+            st.markdown("### 💵 Recommended Price Range")
             
             col_a, col_b, col_c = st.columns(3)
             
             with col_a:
-                st.metric("Budget", f"EUR {p25:.2f}", "25th percentile")
+                st.metric("Budget", f"€{p25:.2f}", "P25")
             with col_b:
-                st.metric("Market", f"EUR {p50:.2f}", "Median")
+                st.metric("Market", f"€{p50:.2f}", "Median")
             with col_c:
-                st.metric("Premium", f"EUR {p75:.2f}", "75th percentile")
+                st.metric("Premium", f"€{p75:.2f}", "P75")
             
             # Time to sell
-            st.markdown("###Estimated Time to Sell")
+            calc_sold = calc_filtered[calc_filtered['status'] == 'sold']
             
-            if calc_kpis['dts']:
-                dts_median = calc_kpis['dts']['median']
-                dts_p25 = calc_kpis['dts']['p25']
-                dts_p75 = calc_kpis['dts']['p75']
+            if len(calc_sold) > 0 and 'first_seen_at' in calc_sold.columns:
+                calc_sold['dts_calc'] = (
+                    pd.to_datetime(calc_sold['last_seen_at']) - 
+                    pd.to_datetime(calc_sold['first_seen_at'])
+                ).dt.total_seconds() / (24 * 3600) + 1
                 
+                dts_median = calc_sold['dts_calc'].median()
+                dts_p25 = calc_sold['dts_calc'].quantile(0.25)
+                dts_p75 = calc_sold['dts_calc'].quantile(0.75)
+                
+                st.markdown("### ⏱️ Estimated Time to Sell")
                 st.info(f"""
                 **Median**: {dts_median:.0f} days  
-                **Fast (25%)**: {dts_p25:.0f} days  
-                **Slow (75%)**: {dts_p75:.0f} days
+                **Fast (P25)**: {dts_p25:.0f} days  
+                **Slow (P75)**: {dts_p75:.0f} days
                 """)
                 
                 if dts_median < 10:
-                    st.success("demand! Premium pricing recommended")
+                    st.success("🔥 High demand! Premium pricing recommended")
                 elif dts_median < 20:
-                    st.info("Good demand. Market price recommended")
+                    st.info("✅ Good demand. Market price recommended")
                 else:
-                    st.warning("Slower sales. Consider budget pricing")
+                    st.warning("⏳ Slower sales. Consider budget pricing")
             
-            # CRITICAL FIX: Restored price input estimator
+            # Price estimator
             st.markdown("---")
-            st.markdown("###Your Price Estimator")
+            st.markdown("### 🎯 Your Price Estimator")
             
             your_price = st.number_input(
                 "Your asking price (EUR)",
                 min_value=1.0,
-                max_value=500.0,
+                max_value=1000.0,
                 value=float(p50),
                 step=1.0
             )
             
-            col_x, col_y = st.columns(2)
+            # FIXED: Better layout for positioning
+            st.markdown("#### 📍 Price Positioning")
             
-            with col_x:
-                if your_price <= p25:
-                    percentile = "Budget (bottom 25%)"
-                    color = "🟢"
-                elif your_price <= p50:
-                    percentile = "Below market (25-50%)"
-                    color = "🟡"
-                elif your_price <= p75:
-                    percentile = "Above market (50-75%)"
-                    color = "🟠"
-                else:
-                    percentile = "Premium (top 25%)"
-                    color = "🔴"
+            if your_price <= p25:
+                percentile = "Budget Tier"
+                emoji = "🟢"
+                desc = "Bottom 25% - Fast sale expected"
+                color_code = "green"
+            elif your_price <= p50:
+                percentile = "Below Market"
+                emoji = "🟡"
+                desc = "25-50% range - Good value"
+                color_code = "orange"
+            elif your_price <= p75:
+                percentile = "Above Market"
+                emoji = "🟠"
+                desc = "50-75% range - Premium pricing"
+                color_code = "orange"
+            else:
+                percentile = "Premium Tier"
+                emoji = "🔴"
+                desc = "Top 25% - Slower sale possible"
+                color_code = "red"
+            
+            # FIXED: Display with clear formatting
+            st.markdown(f"""
+            <div style='padding: 1rem; background-color: #f0f2f6; border-radius: 0.5rem; border-left: 4px solid {PRIMARY_BLUE};'>
+                <h3 style='margin: 0; color: {PRIMARY_BLUE};'>{emoji} {percentile}</h3>
+                <p style='margin: 0.5rem 0 0 0; color: #666;'>{desc}</p>
+                <p style='margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #888;'>
+                    Your price: <strong>€{your_price:.2f}</strong> | Market median: <strong>€{p50:.2f}</strong>
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Estimated DTS based on price
+            if len(calc_sold) > 0 and 'dts_calc' in calc_sold.columns:
+                st.markdown("#### ⏰ Estimated Days to Sell")
                 
-                st.metric("Price Positioning", f"{color} {percentile}")
-            
-            with col_y:
-                if calc_kpis['dts']:
-                    if your_price <= p25:
-                        estimated_dts = calc_kpis['dts']['p25']
-                        speed = "Fast"
-                    elif your_price <= p50:
-                        estimated_dts = calc_kpis['dts']['median']
-                        speed = "Average"
-                    elif your_price <= p75:
-                        estimated_dts = calc_kpis['dts']['p75']
-                        speed = "Slower"
-                    else:
-                        estimated_dts = calc_kpis['dts']['p75'] * 1.5
-                        speed = "Slow"
-                    
-                    st.metric("Est. Days to Sell", f"{estimated_dts:.0f} days", speed)
+                if your_price <= p25:
+                    estimated_dts = dts_p25
+                    speed = "⚡ Fast"
+                elif your_price <= p50:
+                    estimated_dts = dts_median
+                    speed = "✅ Average"
+                elif your_price <= p75:
+                    estimated_dts = dts_p75
+                    speed = "⏳ Slower"
+                else:
+                    estimated_dts = dts_p75 * 1.3
+                    speed = "🐌 Slow"
+                
+                st.metric("", f"{estimated_dts:.0f} days", speed)
         
         else:
-            st.error("No data for this combination")
+            st.error("❌ No comparable items found for this combination")
 
 # ============================================================================
 # PAGE 4: DOWNLOADS
 # ============================================================================
 
 elif "Downloads" in page:
-    st.markdown('<p class="main-header">Downloads</p>', unsafe_allow_html=True)
-    
-    # if not has_premium_access():
-    #     request_access_widget()
-    #     st.stop()
+    st.markdown(f'<p class="main-header">📥 Downloads</p>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("CSV Exports")
+        st.subheader("📊 CSV Exports")
         
         active_df = listings_df[listings_df['status'] == 'active']
         csv_active = active_df.to_csv(index=False)
         st.download_button(
-            "Download Active (CSV)",
+            "📄 Download Active Items (CSV)",
             csv_active,
-            f"vinted_active_{datetime.now().strftime('%Y%m%d')}.csv",
+            f"active_listings_{datetime.now().strftime('%Y%m%d')}.csv",
             "text/csv"
         )
         st.info(f"{len(active_df):,} items")
         
-        if len(sold_events_df) > 0:
-            csv_sold = sold_events_df.to_csv(index=False)
+        sold_df = listings_df[listings_df['status'] == 'sold']
+        if len(sold_df) > 0:
+            csv_sold = sold_df.to_csv(index=False)
             st.download_button(
-                "Download Sold (CSV)",
+                "📄 Download Sold Items (CSV)",
                 csv_sold,
-                f"vinted_sold_{datetime.now().strftime('%Y%m%d')}.csv",
+                f"sold_listings_{datetime.now().strftime('%Y%m%d')}.csv",
                 "text/csv"
             )
-            st.info(f"{len(sold_events_df):,} items")
+            st.info(f"{len(sold_df):,} items")
         
         if len(price_events_df) > 0:
             csv_prices = price_events_df.to_csv(index=False)
             st.download_button(
-                "Download Price Changes (CSV)",
+                "📄 Download Price Changes (CSV)",
                 csv_prices,
-                f"vinted_prices_{datetime.now().strftime('%Y%m%d')}.csv",
+                f"price_changes_{datetime.now().strftime('%Y%m%d')}.csv",
                 "text/csv"
             )
-            st.info(f"{len(price_events_df):,} items")
+            st.info(f"{len(price_events_df):,} events")
     
     with col2:
-        st.subheader("Reports")
-        st.info("Use 'Brand·Category Analysis' page to generate PDF reports with charts")
+        st.subheader("📄 Reports")
+        st.info("💡 Use 'Brand·Category Analysis' page to generate PDF reports with visualizations")
+
+
 
 st.markdown("---")
 st.markdown(f"""
 <div style='text-align: center; color: #666; padding: 1rem;'>
-    <p><strong>Vinted Market Intelligence</strong> | {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+    <p><strong>Market Intelligence Dashboard</strong> | {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+    <p style='font-size: 0.8rem;'>Data source: Marketplace scraping engine</p>
 </div>
 """, unsafe_allow_html=True)

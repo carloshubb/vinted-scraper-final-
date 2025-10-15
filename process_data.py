@@ -166,7 +166,7 @@ def process_new_scrape(current_df, scrape_filename):
     current_df['first_seen_at'] = current_timestamp
     current_df['last_seen_at'] = current_timestamp
     
-    # Preserve published_at from scraper
+    # Preserve published_at from scraper (but we'll use first_seen_at for DTS calculations)
     if 'published_at' in current_df.columns:
         current_df['published_at'] = pd.to_datetime(current_df['published_at'])
     
@@ -217,21 +217,26 @@ def detect_price_changes(current_df, previous_df):
     return events_df
 
 
-def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=30):
+def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=90):
     """
-    CRITICAL FIX: Much stricter sold detection to avoid false positives
+    FIXED SOLD DETECTION + DTS CALCULATION (Client's Logic)
     
-    Items are only considered SOLD if:
+    Items are considered SOLD if:
     1. Disappeared from current scrape
-    2. Posted ≤30 days ago
-    3. Missing for ≥48 hours (was missing in at least 1 previous scrape)
-    4. NOT relisted (check item_id doesn't reappear)
+    2. Were visible in previous scrape
+    3. Missing for ≥48 hours
+    
+    DTS CALCULATION (CLIENT'S CORRECT METHOD):
+    - first_seen_at = first scrape where item appeared
+    - last_seen_at = last scrape where item was visible
+    - estimated_sold_at = last_seen_at + 24 hours (half scrape interval)
+    - days_to_sell = (estimated_sold_at - first_seen_at) in days
     """
     if previous_df is None or len(previous_df) == 0:
         logger.info("No previous data for sold item detection")
         return pd.DataFrame()
     
-    logger.info("Detecting sold items...")
+    logger.info("Detecting sold items with CORRECTED DTS calculation...")
     
     current_ids = set(current_df['item_id'].unique())
     previous_ids = set(previous_df['item_id'].unique())
@@ -248,44 +253,38 @@ def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=
     for item_id in missing_ids:
         item = previous_df[previous_df['item_id'] == item_id].iloc[0]
         
-        # Calculate time since last seen
+        # Get timestamps
         last_seen = pd.to_datetime(item['last_seen_at'])
+        first_seen = pd.to_datetime(item['first_seen_at'])
+        
+        # Calculate time since last seen
         time_diff = current_time - last_seen
         
-        # CRITICAL: Skip if not missing long enough
+        # Skip if not missing long enough
         if time_diff < timedelta(hours=hours_threshold):
-            logger.debug(f"Item {item_id} missing < {hours_threshold}h, skipping")
             continue
         
-        # Get listing date
-        if 'published_at' in item and pd.notna(item['published_at']):
-            listing_date = pd.to_datetime(item['published_at'])
-        else:
-            listing_date = pd.to_datetime(item['first_seen_at'])
+        # CLIENT'S CORRECT LOGIC: Add 24h to last_seen (half the scrape interval)
+        # Because we scrape every 48h, item likely sold midway between last scrape and now
+        estimated_sold_at = last_seen + timedelta(hours=24)
         
-        # Calculate age
-        listing_age_days = (current_time - listing_date).days
+        # DTS = time from first seen to estimated sale
+        days_to_sell = (estimated_sold_at - first_seen).total_seconds() / (24 * 3600)
         
-        # CRITICAL: Skip if too old (likely delisted, not sold)
+        # Calculate listing age (for filtering very old items)
+        listing_age_days = (current_time - first_seen).days
+        
+        # Skip extremely old items (likely delisted, not sold)
         if listing_age_days > max_age_days:
-            logger.debug(f"Item {item_id} too old ({listing_age_days} days), skipping")
             continue
         
-        # CRITICAL: Skip if too new (likely just hidden temporarily)
-        if listing_age_days < 2:  # NEW: Must be listed at least 2 days
-            logger.debug(f"Item {item_id} too new ({listing_age_days} days), skipping")
-            continue
-        
-        # Calculate days to sell
-        days_to_sell = (current_time - listing_date).total_seconds() / (24 * 3600)
-        
-        # CRITICAL: More conservative confidence levels
+        # Confidence based on how long item has been missing
         if time_diff >= timedelta(hours=96):  # 4 days
-            confidence = 1.0  # High confidence
+            confidence = 1.0
         elif time_diff >= timedelta(hours=hours_threshold):  # 2 days
-            confidence = 0.5  # Medium confidence
+            confidence = 0.5
         else:
-            continue  # Skip low confidence entirely
+            continue
         
         final_listed_price = item['price']
         
@@ -298,10 +297,10 @@ def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=
             'audience': item.get('audience', 'Unknown'),
             'final_listed_price': final_listed_price,
             'currency': item.get('currency', 'EUR'),
-            'sold_at': current_time,
-            'published_at': listing_date,
-            'first_seen_at': pd.to_datetime(item['first_seen_at']),
-            'days_to_sell': days_to_sell,
+            'sold_at': estimated_sold_at,  # FIXED: Use estimated sale date
+            'first_seen_at': first_seen,   # When we first saw it
+            'last_seen_at': last_seen,     # Last time it was visible
+            'days_to_sell': days_to_sell,  # FIXED: Correct calculation
             'listing_age_days': listing_age_days,
             'sold_confidence': confidence,
             'season': item.get('season', None)
@@ -310,17 +309,18 @@ def detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=
     events_df = pd.DataFrame(sold_events)
     
     if len(events_df) > 0:
-        logger.info(f"Detected {len(events_df)} sold items (2-{max_age_days} days old, missing ≥{hours_threshold}h)")
+        logger.info(f"Detected {len(events_df)} sold items")
+        logger.info(f"  - Average DTS (CORRECTED): {events_df['days_to_sell'].mean():.1f} days")
+        logger.info(f"  - Median DTS: {events_df['days_to_sell'].median():.1f} days")
         logger.info(f"  - High confidence (≥96h): {len(events_df[events_df['sold_confidence'] == 1.0])}")
-        logger.info(f"  - Medium confidence (48-96h): {len(events_df[events_df['sold_confidence'] == 0.5])}")
-        logger.info(f"  - Average listing age: {events_df['listing_age_days'].mean():.1f} days")
-        logger.info(f"  - Average days to sell: {events_df['days_to_sell'].mean():.1f} days")
-    else:
-        logger.info(f"No sold items detected with strict criteria")
     
     return events_df
+
+
 def update_listings_database(current_df, previous_df):
-    """Update the main listings database."""
+    """
+    FIXED: Update listings database to track unique items only
+    """
     logger.info("Updating listings database...")
     
     if previous_df is None or len(previous_df) == 0:
@@ -334,42 +334,46 @@ def update_listings_database(current_df, previous_df):
         new_ids = current_ids - previous_ids
         new_items = current_df[current_df['item_id'].isin(new_ids)].copy()
         
-        # Existing items
+        # Existing items (still active) - UPDATE THEM
         existing_ids = current_ids & previous_ids
         existing_current = current_df[current_df['item_id'].isin(existing_ids)].copy()
         existing_previous = previous_df[previous_df['item_id'].isin(existing_ids)].copy()
         
-        # Ensure datetime columns before merge
-        for col in ['first_seen_at', 'published_at']:
+        # Keep first_seen_at from previous, update last_seen_at
+        for col in ['first_seen_at']:
             if col in existing_previous.columns:
                 existing_previous[col] = pd.to_datetime(existing_previous[col])
         
-        # Keep first_seen_at and published_at from previous
         existing_current = existing_current.merge(
-            existing_previous[['item_id', 'first_seen_at', 'published_at']], 
+            existing_previous[['item_id', 'first_seen_at']], 
             on='item_id', 
             suffixes=('', '_prev')
         )
         existing_current['first_seen_at'] = existing_current['first_seen_at_prev']
-        if 'published_at_prev' in existing_current.columns:
-            existing_current['published_at'] = existing_current['published_at_prev']
         existing_current = existing_current.drop(columns=[c for c in existing_current.columns if c.endswith('_prev')])
         
-        # Sold items
+        # Sold items (disappeared) - mark as sold but keep in database
         sold_ids = previous_ids - current_ids
         sold_items = previous_df[previous_df['item_id'].isin(sold_ids)].copy()
         sold_items['status'] = 'sold'
-        sold_items['last_seen_at'] = datetime.now()
+        # Don't update last_seen_at - keep it as the last time we actually saw it
         
-        # Combine
+        # CRITICAL FIX: Combine WITHOUT duplicates
         updated_df = pd.concat([existing_current, new_items, sold_items], ignore_index=True)
+        
+        # Remove any duplicates (shouldn't happen, but safety check)
+        original_count = len(updated_df)
+        updated_df = updated_df.drop_duplicates(subset=['item_id'], keep='last')
+        if original_count != len(updated_df):
+            logger.warning(f"Removed {original_count - len(updated_df)} duplicate item_ids")
         
         logger.info(f"Database update:")
         logger.info(f"  - New items: {len(new_items)}")
-        logger.info(f"  - Updated items: {len(existing_current)}")
-        logger.info(f"  - Sold items: {len(sold_items)}")
+        logger.info(f"  - Updated existing: {len(existing_current)}")
+        logger.info(f"  - Marked as sold: {len(sold_items)}")
+        logger.info(f"  - Total unique items: {len(updated_df)}")
     
-    # Ensure datetime columns are properly typed
+    # Ensure datetime columns
     datetime_cols = ['first_seen_at', 'last_seen_at', 'published_at', 'scrape_timestamp']
     for col in datetime_cols:
         if col in updated_df.columns:
@@ -397,15 +401,8 @@ def save_processed_data(listings_df, price_events_df, sold_events_df):
     
     # Save listings
     listings_file = DATA_DIR / "processed" / "listings.parquet"
-    try:
-        listings_df.to_parquet(listings_file, index=False)
-        logger.info(f"Saved {len(listings_df)} listings to {listings_file}")
-    except Exception as e:
-        logger.error(f"Error saving listings: {e}")
-        csv_file = DATA_DIR / "processed" / "listings.csv"
-        listings_df.to_csv(csv_file, index=False)
-        logger.info(f"Saved as CSV fallback: {csv_file}")
-        raise
+    listings_df.to_parquet(listings_file, index=False)
+    logger.info(f"Saved {len(listings_df)} listings to {listings_file}")
     
     # Save price events
     price_events_file = DATA_DIR / "processed" / "price_events.parquet"
@@ -416,27 +413,25 @@ def save_processed_data(listings_df, price_events_df, sold_events_df):
         if price_events_file.exists():
             existing_events = pd.read_parquet(price_events_file)
             price_events_df = pd.concat([existing_events, price_events_df], ignore_index=True)
+            price_events_df = price_events_df.drop_duplicates(subset=['event_id'], keep='last')
+        
         price_events_df.to_parquet(price_events_file, index=False)
-        logger.info(f"Saved {len(price_events_df)} price events to {price_events_file}")
+        logger.info(f"Saved {len(price_events_df)} price events")
     
     # Save sold events
     sold_events_file = DATA_DIR / "processed" / "sold_events.parquet"
     if not sold_events_df.empty:
-        for col in ['sold_at', 'published_at', 'first_seen_at']:
+        for col in ['sold_at', 'first_seen_at', 'last_seen_at']:
             if col in sold_events_df.columns:
                 sold_events_df[col] = pd.to_datetime(sold_events_df[col], errors='coerce')
         
         if sold_events_file.exists():
             existing_sold = pd.read_parquet(sold_events_file)
             sold_events_df = pd.concat([existing_sold, sold_events_df], ignore_index=True)
+            sold_events_df = sold_events_df.drop_duplicates(subset=['event_id'], keep='last')
+        
         sold_events_df.to_parquet(sold_events_file, index=False)
-        logger.info(f"Saved {len(sold_events_df)} sold events to {sold_events_file}")
-    
-    # Backup
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file = DATA_DIR / "processed" / f"listings_backup_{timestamp}.parquet"
-    listings_df.to_parquet(backup_file, index=False)
-    logger.info(f"Created backup at {backup_file}")
+        logger.info(f"Saved {len(sold_events_df)} sold events")
 
 
 def generate_summary_report(listings_df, price_events_df, sold_events_df):
@@ -445,9 +440,17 @@ def generate_summary_report(listings_df, price_events_df, sold_events_df):
     logger.info("PROCESSING SUMMARY")
     logger.info("="*60)
     
-    logger.info(f"\nTotal Listings: {len(listings_df)}")
-    logger.info(f"  - Active: {len(listings_df[listings_df['status'] == 'active'])}")
-    logger.info(f"  - Sold: {len(listings_df[listings_df['status'] == 'sold'])}")
+    active_count = len(listings_df[listings_df['status'] == 'active'])
+    sold_count = len(listings_df[listings_df['status'] == 'sold'])
+    total_count = len(listings_df)
+    
+    logger.info(f"\nTotal Unique Items: {total_count}")
+    logger.info(f"  - Active: {active_count}")
+    logger.info(f"  - Sold: {sold_count}")
+    logger.info(f"  - Verification: {active_count} + {sold_count} = {active_count + sold_count}")
+    
+    if active_count + sold_count != total_count:
+        logger.warning(f"  ⚠ MISMATCH: Expected {total_count}, got {active_count + sold_count}")
     
     logger.info("\nListings by Brand:")
     for brand in sorted(listings_df['brand_norm'].unique()):
@@ -456,11 +459,14 @@ def generate_summary_report(listings_df, price_events_df, sold_events_df):
         logger.info(f"  {brand}: {count} total ({active} active)")
     
     logger.info(f"\nPrice Changes: {len(price_events_df)}")
-    logger.info(f"Sold Items: {len(sold_events_df)}")
+    logger.info(f"Sold Events: {len(sold_events_df)}")
     
-    logger.info("\nPrice Statistics:")
-    logger.info(f"  Mean: EUR {listings_df['price'].mean():.2f}")
-    logger.info(f"  Median: EUR {listings_df['price'].median():.2f}")
+    if len(sold_events_df) > 0:
+        logger.info(f"\nDTS Statistics (CORRECTED):")
+        logger.info(f"  Mean: {sold_events_df['days_to_sell'].mean():.1f} days")
+        logger.info(f"  Median: {sold_events_df['days_to_sell'].median():.1f} days")
+        logger.info(f"  Min: {sold_events_df['days_to_sell'].min():.1f} days")
+        logger.info(f"  Max: {sold_events_df['days_to_sell'].max():.1f} days")
     
     logger.info("="*60 + "\n")
 
@@ -478,7 +484,7 @@ def process_pipeline():
     previous_df = load_previous_listings()
     current_df = process_new_scrape(current_df, scrape_filename)
     price_events_df = detect_price_changes(current_df, previous_df)
-    sold_events_df = detect_sold_items(current_df, previous_df, hours_threshold=48, max_age_days=30)
+    sold_events_df = detect_sold_items(current_df, previous_df, hours_threshold=48)
     updated_listings_df = update_listings_database(current_df, previous_df)
     save_processed_data(updated_listings_df, price_events_df, sold_events_df)
     generate_summary_report(updated_listings_df, price_events_df, sold_events_df)

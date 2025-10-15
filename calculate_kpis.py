@@ -1,6 +1,6 @@
 """
-KPI Calculation Engine for Vinted Market Intelligence
-COMPLETE VERSION with Proposal 2 updates
+KPI Calculation Engine - FIXED VERSION
+Implements client's correct formulas for DTS and Sell-Through
 """
 import pandas as pd
 import numpy as np
@@ -42,7 +42,7 @@ def load_all_data():
     if sold_events_file.exists():
         sold_events_df = pd.read_parquet(sold_events_file)
         
-        for col in ['published_at', 'sold_at', 'first_seen_at']:
+        for col in ['sold_at', 'first_seen_at', 'last_seen_at']:
             if col in sold_events_df.columns:
                 sold_events_df[col] = pd.to_datetime(sold_events_df[col])
         
@@ -96,7 +96,10 @@ def apply_filters(df, brand=None, category=None, audience=None, status=None, sea
 
 
 def calculate_days_to_sell(sold_events_df, brand=None, category=None, audience=None, season=None):
-    """Calculate Days-to-Sell (DTS) - Median days from published_at to sold."""
+    """
+    Calculate Days-to-Sell (DTS) - Already fixed in process_data.py
+    Uses: days_to_sell = (estimated_sold_at - first_seen_at)
+    """
     if sold_events_df.empty:
         logger.warning("No sold events available for DTS calculation")
         return None
@@ -132,82 +135,77 @@ def calculate_days_to_sell(sold_events_df, brand=None, category=None, audience=N
 
 def calculate_sell_through_30d(sold_events_df, listings_df, brand=None, category=None, audience=None, season=None):
     """
-    Calculate 30-day sell-through rate
+    FIXED: CLIENT'S CORRECT FORMULA
     
-    CRITICAL FIX: Use total active listings as denominator (not items ≥30 days)
+    30-Day Sell-Through Rate = 
+        (Items sold ≤30 days from first_seen_at) / (All items published/seen in analysis period)
     
-    NEW FORMULA:
-    - Numerator: High-confidence items sold in ≤30 days
-    - Denominator: Current active listings (realistic market size)
-    
-    This fixes the 375,700% issue by using realistic denominator
+    This includes BOTH sold and unsold items in denominator.
     """
+    # Filter listings
     filtered_listings = apply_filters(listings_df, brand=brand, category=category, audience=audience, season=season)
     
     if len(filtered_listings) == 0:
         logger.warning("No listings match filters for sell-through calculation")
         return None
     
-    # CRITICAL FIX: Use active listings as denominator
-    active_listings = filtered_listings[filtered_listings['status'] == 'active']
-    denominator = len(active_listings)
+    # Get all items (both active and sold) that were published/first seen
+    # This is our true denominator - the full population
+    all_items = filtered_listings.copy()
+    denominator = len(all_items)
     
     if denominator == 0:
-        logger.warning("No active listings for sell-through calculation")
         return {
             'percentage': 0.0,
             'sold_30d': 0,
-            'eligible_items': 0,
-            'note': 'No active listings'
+            'total_items': 0,
+            'note': 'No items in analysis period'
         }
     
     if sold_events_df.empty:
         return {
             'percentage': 0.0,
             'sold_30d': 0,
-            'eligible_items': denominator,
+            'total_items': denominator,
             'note': 'No sold items yet'
         }
     
+    # Filter sold events
     filtered_sold = apply_filters(sold_events_df, brand=brand, category=category, audience=audience, season=season)
     
     if len(filtered_sold) == 0:
         return {
             'percentage': 0.0,
             'sold_30d': 0,
-            'eligible_items': denominator
+            'total_items': denominator
         }
     
-    # CRITICAL: Only use HIGH confidence sales (1.0)
-    high_confidence = filtered_sold[filtered_sold['sold_confidence'] >= 1.0]
+    # Use high confidence sales only
+    high_confidence = filtered_sold[filtered_sold['sold_confidence'] >= 0.5]
     
     if len(high_confidence) == 0:
-        logger.warning("No high-confidence sold items")
         return {
             'percentage': 0.0,
             'sold_30d': 0,
-            'eligible_items': denominator,
+            'total_items': denominator,
             'note': 'No high-confidence sales yet'
         }
     
-    # Numerator: Items sold within 30 days
+    # Numerator: Items sold within 30 days of first_seen_at
     sold_30d = high_confidence[high_confidence['days_to_sell'] <= 30]
     numerator = len(sold_30d)
     
     # Calculate percentage
     sell_through_pct = (numerator / denominator) * 100
     
-    # CRITICAL: Cap at 100% (safety)
-    if sell_through_pct > 100:
-        logger.warning(f"Sell-through > 100% ({sell_through_pct:.1f}%), capping at 100%")
-        sell_through_pct = 100.0
-    
     return {
         'percentage': sell_through_pct,
         'sold_30d': numerator,
-        'eligible_items': denominator,
-        'formula': f'{numerator} sold ≤30d / {denominator} active listings'
+        'total_items': denominator,
+        'formula': f'{numerator} sold ≤30d / {denominator} total items'
     }
+
+
 def calculate_price_distribution(listings_df, brand=None, category=None, audience=None, status=None, season=None):
     """Calculate price distribution (P25, P50/Median, P75)."""
     filtered = apply_filters(listings_df, brand=brand, category=category, audience=audience, status=status, season=season)
@@ -391,7 +389,7 @@ def print_kpi_report(kpis, title="KPI Report"):
     if kpis['sell_through_30d']:
         print("\n[SELL-THROUGH] 30-Day Sell-Through Rate:")
         print(f"   {kpis['sell_through_30d']['percentage']:.1f}%")
-        print(f"   ({kpis['sell_through_30d']['sold_30d']} / {kpis['sell_through_30d']['eligible_items']} eligible items)")
+        print(f"   ({kpis['sell_through_30d']['sold_30d']} sold / {kpis['sell_through_30d']['total_items']} total items)")
     else:
         print("\n[SELL-THROUGH] 30-Day Sell-Through Rate: No data available")
     
@@ -472,7 +470,7 @@ def export_kpis_to_csv(all_kpis, filename="kpis_report.csv"):
         if kpis.get('sell_through_30d'):
             row['sell_through_30d_pct'] = kpis['sell_through_30d']['percentage']
             row['sold_30d_count'] = kpis['sell_through_30d']['sold_30d']
-            row['eligible_items'] = kpis['sell_through_30d']['eligible_items']
+            row['total_items'] = kpis['sell_through_30d']['total_items']
         
         if kpis.get('price_distribution'):
             row['price_p25'] = kpis['price_distribution']['p25']
@@ -501,7 +499,7 @@ def export_kpis_to_csv(all_kpis, filename="kpis_report.csv"):
 def main():
     """Main execution function."""
     logger.info("\n" + "="*60)
-    logger.info("VINTED KPI CALCULATION ENGINE")
+    logger.info("MARKET INTELLIGENCE KPI ENGINE")
     logger.info("="*60)
     
     try:
