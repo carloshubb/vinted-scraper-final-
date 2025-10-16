@@ -1,0 +1,760 @@
+2025-10-16 01:09:19,756 - INFO - 
+======================================================================
+2025-10-16 01:09:19,756 - INFO - VINTED SCRAPER v2.0 - CATEGORY-WIDE MODE
+2025-10-16 01:09:19,756 - INFO - ======================================================================
+2025-10-16 01:09:19,756 - INFO - Started at: 2025-10-16 01:09:19
+2025-10-16 01:09:19,756 - INFO - [WEB] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20...
+2025-10-16 01:09:19,756 - INFO - [CONFIG] Strategy: 4 combos configured
+2025-10-16 01:09:20,284 - INFO - [INIT] Loading homepage to capture cookies...
+2025-10-16 01:09:32,204 - INFO - [OK] Cookies captured: 17
+2025-10-16 01:09:32,204 - INFO - 
+======================================================================
+2025-10-16 01:09:32,204 - INFO - [1/4] SCRAPING COMBO
+2025-10-16 01:09:32,204 - INFO - ======================================================================
+2025-10-16 01:09:32,204 - INFO - [CATEGORIES] Category: Dresses
+2025-10-16 01:09:32,204 - INFO - [AUDIENCE] Audience: Women
+2025-10-16 01:09:32,204 - INFO - [TOP 15 BRANDS]  Brand: ALL BRANDS
+2025-10-16 01:09:32,204 - INFO - [TOTAL] Order: newest_first
+2025-10-16 01:09:32,204 - INFO - [PAGE] Max Pages: 10
+2025-10-16 01:09:32,204 - INFO - ======================================================================
+2025-10-16 01:09:32,204 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:09:36,040 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:09:36,040 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:09:36,040 - INFO -  No more pages available
+2025-10-16 01:09:36,040 - INFO - [WAIT] Waiting 11.4s before next page...
+2025-10-16 01:09:47,468 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:09:51,205 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:09:51,216 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:09:51,216 - INFO -  No more pages available
+2025-10-16 01:09:51,216 - INFO - [WAIT] Waiting 12.5s before next page...
+2025-10-16 01:10:03,677 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:10:07,957 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:10:07,963 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:10:07,963 - INFO -  No more pages available
+2025-10-16 01:10:07,963 - INFO - [WAIT] Waiting 10.6s before next page...
+2025-10-16 01:10:18,529 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:10:24,347 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:10:24,351 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:10:24,351 - INFO -  No more pages available
+2025-10-16 01:10:24,351 - INFO - [WAIT] Waiting 11.3s before next page...
+2025-10-16 01:10:35,693 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:10:41,653 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:10:41,659 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:10:41,659 - INFO -  No more pages available
+2025-10-16 01:10:41,659 - INFO - [WAIT] Waiting 12.6s before next page...
+2025-10-16 01:10:54,267 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:10:59,081 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:10:59,093 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:10:59,095 - INFO -  No more pages available
+2025-10-16 01:10:59,095 - INFO - [WAIT] Waiting 14.0s before next page...
+2025-10-16 01:11:13,050 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:11:17,012 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:11:17,029 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:11:17,029 - INFO -  No more pages available
+2025-10-16 01:11:17,029 - INFO - [WAIT] Waiting 11.4s before next page...
+2025-10-16 01:11:28,396 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:11:32,614 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:11:32,629 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:11:32,629 - INFO -  No more pages available
+2025-10-16 01:11:32,629 - INFO - [WAIT] Waiting 13.8s before next page...
+2025-10-16 01:11:46,436 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:11:50,593 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:11:50,593 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:11:50,593 - INFO -  No more pages available
+2025-10-16 01:11:50,593 - INFO - [WAIT] Waiting 13.0s before next page...
+2025-10-16 01:12:03,564 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:12:07,496 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:12:07,496 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:12:07,496 - INFO -  No more pages available
+2025-10-16 01:12:07,496 - INFO - [WAIT] Waiting 11.7s before next page...
+2025-10-16 01:12:19,159 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:12:23,053 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:12:23,069 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:12:23,069 - INFO -  No more pages available
+2025-10-16 01:12:23,069 - INFO - [WAIT] Waiting 13.2s before next page...
+2025-10-16 01:12:36,266 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:12:40,003 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:12:40,013 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:12:40,013 - INFO -  No more pages available
+2025-10-16 01:12:40,015 - INFO - [WAIT] Waiting 13.9s before next page...
+2025-10-16 01:12:53,947 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:12:57,783 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:12:57,803 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:12:57,803 - INFO -  No more pages available
+2025-10-16 01:12:57,803 - INFO - [WAIT] Waiting 13.8s before next page...
+2025-10-16 01:13:11,564 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:13:17,326 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:13:17,326 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:13:17,326 - INFO -  No more pages available
+2025-10-16 01:13:17,335 - INFO - [WAIT] Waiting 12.1s before next page...
+2025-10-16 01:13:29,470 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:13:32,877 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:13:32,877 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:13:32,877 - INFO -  No more pages available
+2025-10-16 01:13:32,877 - INFO - [WAIT] Waiting 11.8s before next page...
+2025-10-16 01:13:44,668 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:13:48,614 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:13:48,620 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:13:48,620 - INFO -  No more pages available
+2025-10-16 01:13:48,620 - INFO - [WAIT] Waiting 12.5s before next page...
+2025-10-16 01:14:01,145 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:14:04,598 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:14:04,598 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:14:04,598 - INFO -  No more pages available
+2025-10-16 01:14:04,598 - INFO - [WAIT] Waiting 12.1s before next page...
+2025-10-16 01:14:16,725 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:14:20,799 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:14:20,816 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:14:20,817 - INFO -  No more pages available
+2025-10-16 01:14:20,817 - INFO - [WAIT] Waiting 13.0s before next page...
+2025-10-16 01:14:33,815 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:14:37,497 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:14:37,497 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:14:37,497 - INFO -  No more pages available
+2025-10-16 01:14:37,497 - INFO - [WAIT] Waiting 13.9s before next page...
+2025-10-16 01:14:51,403 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:14:55,010 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:14:55,010 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:14:55,010 - INFO -  No more pages available
+2025-10-16 01:14:55,010 - INFO - [WAIT] Waiting 15.1s before next page...
+2025-10-16 01:15:10,099 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:15:14,500 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:15:14,500 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:15:14,500 - INFO -  No more pages available
+2025-10-16 01:15:14,500 - INFO - [WAIT] Waiting 14.8s before next page...
+2025-10-16 01:15:29,357 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:15:34,324 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:15:34,324 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:15:34,324 - INFO -  No more pages available
+2025-10-16 01:15:34,324 - INFO - [WAIT] Waiting 14.4s before next page...
+2025-10-16 01:15:48,712 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:15:52,482 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:15:52,482 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:15:52,482 - INFO -  No more pages available
+2025-10-16 01:15:52,482 - INFO - [WAIT] Waiting 14.9s before next page...
+2025-10-16 01:16:07,392 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:16:11,293 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:16:11,302 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:16:11,302 - INFO -  No more pages available
+2025-10-16 01:16:11,302 - INFO - [WAIT] Waiting 14.9s before next page...
+2025-10-16 01:16:26,247 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:16:29,642 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:16:29,646 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:16:29,646 - INFO -  No more pages available
+2025-10-16 01:16:29,646 - INFO - [WAIT] Waiting 15.0s before next page...
+2025-10-16 01:16:44,693 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:16:48,743 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:16:48,743 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:16:48,743 - INFO -  No more pages available
+2025-10-16 01:16:48,743 - INFO - [WAIT] Waiting 11.4s before next page...
+2025-10-16 01:17:00,123 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:17:03,985 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:17:04,002 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:17:04,002 - INFO -  No more pages available
+2025-10-16 01:17:04,002 - INFO - [WAIT] Waiting 13.5s before next page...
+2025-10-16 01:17:17,461 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:17:28,332 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:17:28,339 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:17:28,339 - INFO -  No more pages available
+2025-10-16 01:17:28,339 - INFO - [WAIT] Waiting 14.7s before next page...
+2025-10-16 01:17:43,046 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:17:47,166 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:17:47,182 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:17:47,182 - INFO -  No more pages available
+2025-10-16 01:17:47,182 - INFO - [WAIT] Waiting 14.4s before next page...
+2025-10-16 01:18:01,577 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:18:05,282 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:18:05,302 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:18:05,302 - INFO -  No more pages available
+2025-10-16 01:18:05,302 - INFO - [WAIT] Waiting 11.1s before next page...
+2025-10-16 01:18:16,382 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:18:20,017 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:18:20,031 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:18:20,031 - INFO -  No more pages available
+2025-10-16 01:18:20,031 - INFO - [WAIT] Waiting 12.5s before next page...
+2025-10-16 01:18:32,557 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:18:37,443 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:18:37,459 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:18:37,460 - INFO -  No more pages available
+2025-10-16 01:18:37,460 - INFO - [WAIT] Waiting 10.8s before next page...
+2025-10-16 01:18:48,215 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:18:51,816 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:18:51,816 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:18:51,816 - INFO -  No more pages available
+2025-10-16 01:18:51,816 - INFO - [WAIT] Waiting 12.7s before next page...
+2025-10-16 01:19:04,549 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:19:08,974 - INFO - [OK] Page 1: Found 959 items
+2025-10-16 01:19:08,974 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:19:08,974 - INFO -  No more pages available
+2025-10-16 01:19:08,974 - INFO - [WAIT] Waiting 13.3s before next page...
+2025-10-16 01:19:22,280 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:19:25,781 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:19:25,799 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:19:25,801 - INFO -  No more pages available
+2025-10-16 01:19:25,801 - INFO - [WAIT] Waiting 14.8s before next page...
+2025-10-16 01:19:40,587 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:19:45,851 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:19:45,867 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:19:45,867 - INFO -  No more pages available
+2025-10-16 01:19:45,868 - INFO - [WAIT] Waiting 11.7s before next page...
+2025-10-16 01:19:57,571 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:20:01,080 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:20:01,095 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:20:01,095 - INFO -  No more pages available
+2025-10-16 01:20:01,095 - INFO - [WAIT] Waiting 16.0s before next page...
+2025-10-16 01:20:17,109 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:20:22,673 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:20:22,673 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:20:22,673 - INFO -  No more pages available
+2025-10-16 01:20:22,673 - INFO - [WAIT] Waiting 12.5s before next page...
+2025-10-16 01:20:35,144 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:20:39,558 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:20:39,558 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:20:39,558 - INFO -  No more pages available
+2025-10-16 01:20:39,558 - INFO - [WAIT] Waiting 11.0s before next page...
+2025-10-16 01:20:50,565 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:20:54,664 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:20:54,684 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:20:54,684 - INFO -  No more pages available
+2025-10-16 01:20:54,684 - INFO - [WAIT] Waiting 13.1s before next page...
+2025-10-16 01:21:07,770 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:21:11,990 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:21:11,996 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:21:11,996 - INFO -  No more pages available
+2025-10-16 01:21:11,997 - INFO - [WAIT] Waiting 12.5s before next page...
+2025-10-16 01:21:24,501 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:21:28,068 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:21:28,078 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:21:28,078 - INFO -  No more pages available
+2025-10-16 01:21:28,078 - INFO - [WAIT] Waiting 15.1s before next page...
+2025-10-16 01:21:43,237 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:21:47,166 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:21:47,166 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:21:47,166 - INFO -  No more pages available
+2025-10-16 01:21:47,166 - INFO - [WAIT] Waiting 12.0s before next page...
+2025-10-16 01:21:59,149 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:22:03,000 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:22:03,016 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:22:03,016 - INFO -  No more pages available
+2025-10-16 01:22:03,016 - INFO - [WAIT] Waiting 14.9s before next page...
+2025-10-16 01:22:17,877 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:22:21,641 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:22:21,641 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:22:21,641 - INFO -  No more pages available
+2025-10-16 01:22:21,641 - INFO - [WAIT] Waiting 16.9s before next page...
+2025-10-16 01:22:38,521 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:22:42,120 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:22:42,120 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:22:42,120 - INFO -  No more pages available
+2025-10-16 01:22:42,120 - INFO - [WAIT] Waiting 12.7s before next page...
+2025-10-16 01:22:54,851 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:22:58,835 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:22:58,840 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:22:58,840 - INFO -  No more pages available
+2025-10-16 01:22:58,840 - INFO - [WAIT] Waiting 16.1s before next page...
+2025-10-16 01:23:14,970 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:23:18,996 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:23:19,020 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:23:19,020 - INFO -  No more pages available
+2025-10-16 01:23:19,020 - INFO - [WAIT] Waiting 11.5s before next page...
+2025-10-16 01:23:30,524 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:23:34,550 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:23:34,550 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:23:34,550 - INFO -  No more pages available
+2025-10-16 01:23:34,550 - INFO - [WAIT] Waiting 10.0s before next page...
+2025-10-16 01:23:44,534 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:23:48,065 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:23:48,065 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:23:48,065 - INFO -  No more pages available
+2025-10-16 01:23:48,065 - INFO - [WAIT] Waiting 13.8s before next page...
+2025-10-16 01:24:01,835 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:24:06,124 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:24:06,138 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:24:06,138 - INFO -  No more pages available
+2025-10-16 01:24:06,138 - INFO - [WAIT] Waiting 15.0s before next page...
+2025-10-16 01:24:21,100 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:24:25,025 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:24:25,030 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:24:25,030 - INFO -  No more pages available
+2025-10-16 01:24:25,030 - INFO - [WAIT] Waiting 15.7s before next page...
+2025-10-16 01:24:40,748 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:24:44,275 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:24:44,281 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:24:44,281 - INFO -  No more pages available
+2025-10-16 01:24:44,281 - INFO - [WAIT] Waiting 15.5s before next page...
+2025-10-16 01:24:59,799 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:25:03,837 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:25:03,853 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:25:03,853 - INFO -  No more pages available
+2025-10-16 01:25:03,854 - INFO - [WAIT] Waiting 12.2s before next page...
+2025-10-16 01:25:16,029 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:25:20,946 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:25:20,962 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:25:20,962 - INFO -  No more pages available
+2025-10-16 01:25:20,962 - INFO - [WAIT] Waiting 12.0s before next page...
+2025-10-16 01:25:33,012 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:25:37,528 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:25:37,535 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:25:37,536 - INFO -  No more pages available
+2025-10-16 01:25:37,536 - INFO - [WAIT] Waiting 15.4s before next page...
+2025-10-16 01:25:52,955 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:25:57,713 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:25:57,720 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:25:57,720 - INFO -  No more pages available
+2025-10-16 01:25:57,720 - INFO - [WAIT] Waiting 11.0s before next page...
+2025-10-16 01:26:08,711 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:26:13,600 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:26:13,608 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:26:13,609 - INFO -  No more pages available
+2025-10-16 01:26:13,609 - INFO - [WAIT] Waiting 12.3s before next page...
+2025-10-16 01:26:25,872 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:26:29,632 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:26:29,638 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:26:29,639 - INFO -  No more pages available
+2025-10-16 01:26:29,639 - INFO - [WAIT] Waiting 12.4s before next page...
+2025-10-16 01:26:42,043 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:26:45,825 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:26:45,831 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:26:45,831 - INFO -  No more pages available
+2025-10-16 01:26:45,831 - INFO - [WAIT] Waiting 11.7s before next page...
+2025-10-16 01:26:57,503 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:27:01,443 - INFO - [OK] Page 1: Found 959 items
+2025-10-16 01:27:01,449 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:27:01,449 - INFO -  No more pages available
+2025-10-16 01:27:01,449 - INFO - [WAIT] Waiting 10.2s before next page...
+2025-10-16 01:27:11,607 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:27:15,629 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:27:15,634 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:27:15,634 - INFO -  No more pages available
+2025-10-16 01:27:15,635 - INFO - [WAIT] Waiting 14.5s before next page...
+2025-10-16 01:27:30,127 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:27:33,776 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:27:33,785 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:27:33,785 - INFO -  No more pages available
+2025-10-16 01:27:33,786 - INFO - [WAIT] Waiting 13.5s before next page...
+2025-10-16 01:27:47,260 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:27:51,360 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:27:51,365 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:27:51,365 - INFO -  No more pages available
+2025-10-16 01:27:51,365 - INFO - [WAIT] Waiting 16.0s before next page...
+2025-10-16 01:28:07,398 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:28:11,599 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:28:11,605 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:28:11,606 - INFO -  No more pages available
+2025-10-16 01:28:11,606 - INFO - [WAIT] Waiting 11.8s before next page...
+2025-10-16 01:28:23,454 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:28:27,624 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:28:27,634 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:28:27,634 - INFO -  No more pages available
+2025-10-16 01:28:27,634 - INFO - [WAIT] Waiting 10.8s before next page...
+2025-10-16 01:28:38,419 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:28:42,124 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:28:42,129 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:28:42,129 - INFO -  No more pages available
+2025-10-16 01:28:42,129 - INFO - [WAIT] Waiting 12.2s before next page...
+2025-10-16 01:28:54,358 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:28:58,309 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:28:58,320 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:28:58,321 - INFO -  No more pages available
+2025-10-16 01:28:58,321 - INFO - [WAIT] Waiting 13.3s before next page...
+2025-10-16 01:29:11,577 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:29:16,012 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:29:16,019 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:29:16,019 - INFO -  No more pages available
+2025-10-16 01:29:16,019 - INFO - [WAIT] Waiting 14.3s before next page...
+2025-10-16 01:29:30,364 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:29:34,718 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:29:34,723 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:29:34,723 - INFO -  No more pages available
+2025-10-16 01:29:34,724 - INFO - [WAIT] Waiting 11.2s before next page...
+2025-10-16 01:29:45,916 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:29:49,884 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:29:49,889 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:29:49,889 - INFO -  No more pages available
+2025-10-16 01:29:49,890 - INFO - [WAIT] Waiting 15.3s before next page...
+2025-10-16 01:30:05,197 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:30:09,146 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:30:09,156 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:30:09,156 - INFO -  No more pages available
+2025-10-16 01:30:09,156 - INFO - [WAIT] Waiting 11.0s before next page...
+2025-10-16 01:30:20,182 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:30:25,271 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:30:25,276 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:30:25,276 - INFO -  No more pages available
+2025-10-16 01:30:25,277 - INFO - [WAIT] Waiting 13.0s before next page...
+2025-10-16 01:30:38,257 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:30:43,131 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:30:43,136 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:30:43,136 - INFO -  No more pages available
+2025-10-16 01:30:43,136 - INFO - [WAIT] Waiting 13.3s before next page...
+2025-10-16 01:30:56,390 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:31:00,745 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:31:00,750 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:31:00,750 - INFO -  No more pages available
+2025-10-16 01:31:00,750 - INFO - [WAIT] Waiting 12.7s before next page...
+2025-10-16 01:31:13,458 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:31:17,023 - INFO - [OK] Page 1: Found 959 items
+2025-10-16 01:31:17,028 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:31:17,028 - INFO -  No more pages available
+2025-10-16 01:31:17,028 - INFO - [WAIT] Waiting 13.5s before next page...
+2025-10-16 01:31:30,546 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:31:34,554 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:31:34,559 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:31:34,559 - INFO -  No more pages available
+2025-10-16 01:31:34,560 - INFO - [WAIT] Waiting 14.7s before next page...
+2025-10-16 01:31:49,277 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:31:53,523 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:31:53,528 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:31:53,529 - INFO -  No more pages available
+2025-10-16 01:31:53,529 - INFO - [WAIT] Waiting 13.1s before next page...
+2025-10-16 01:32:06,620 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:32:10,320 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:32:10,325 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:32:10,325 - INFO -  No more pages available
+2025-10-16 01:32:10,325 - INFO - [WAIT] Waiting 10.4s before next page...
+2025-10-16 01:32:20,713 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:32:24,783 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:32:24,789 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:32:24,790 - INFO -  No more pages available
+2025-10-16 01:32:24,790 - INFO - [WAIT] Waiting 14.8s before next page...
+2025-10-16 01:32:39,560 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:32:43,487 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:32:43,492 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:32:43,492 - INFO -  No more pages available
+2025-10-16 01:32:43,493 - INFO - [WAIT] Waiting 9.6s before next page...
+2025-10-16 01:32:53,045 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:32:57,062 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:32:57,066 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:32:57,067 - INFO -  No more pages available
+2025-10-16 01:32:57,067 - INFO - [WAIT] Waiting 12.5s before next page...
+2025-10-16 01:33:09,562 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:33:14,763 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:33:14,769 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:33:14,769 - INFO -  No more pages available
+2025-10-16 01:33:14,769 - INFO - [WAIT] Waiting 14.0s before next page...
+2025-10-16 01:33:28,752 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:33:33,463 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:33:33,469 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:33:33,469 - INFO -  No more pages available
+2025-10-16 01:33:33,469 - INFO - [WAIT] Waiting 12.6s before next page...
+2025-10-16 01:33:46,076 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:33:50,086 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:33:50,094 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:33:50,094 - INFO -  No more pages available
+2025-10-16 01:33:50,094 - INFO - [WAIT] Waiting 9.8s before next page...
+2025-10-16 01:33:59,942 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:34:03,935 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:34:03,935 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:34:03,935 - INFO -  No more pages available
+2025-10-16 01:34:03,935 - INFO - [WAIT] Waiting 11.5s before next page...
+2025-10-16 01:34:15,461 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:34:19,164 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:34:19,170 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:34:19,171 - INFO -  No more pages available
+2025-10-16 01:34:19,171 - INFO - [WAIT] Waiting 12.1s before next page...
+2025-10-16 01:34:31,316 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:34:34,925 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:34:34,925 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:34:34,925 - INFO -  No more pages available
+2025-10-16 01:34:34,925 - INFO - [WAIT] Waiting 12.8s before next page...
+2025-10-16 01:34:47,719 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:34:51,210 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:34:51,210 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:34:51,210 - INFO -  No more pages available
+2025-10-16 01:34:51,210 - INFO - [WAIT] Waiting 12.4s before next page...
+2025-10-16 01:35:03,624 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:35:07,645 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:35:07,651 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:35:07,651 - INFO -  No more pages available
+2025-10-16 01:35:07,651 - INFO - [WAIT] Waiting 13.2s before next page...
+2025-10-16 01:35:20,843 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:35:26,310 - INFO - [OK] Page 1: Found 959 items
+2025-10-16 01:35:26,310 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:35:26,310 - INFO -  No more pages available
+2025-10-16 01:35:26,310 - INFO - [WAIT] Waiting 14.8s before next page...
+2025-10-16 01:35:41,154 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:35:45,148 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:35:45,155 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:35:45,155 - INFO -  No more pages available
+2025-10-16 01:35:45,155 - INFO - [WAIT] Waiting 14.8s before next page...
+2025-10-16 01:35:59,952 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:36:03,774 - INFO - [OK] Page 1: Found 959 items
+2025-10-16 01:36:03,786 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:36:03,787 - INFO -  No more pages available
+2025-10-16 01:36:03,787 - INFO - [WAIT] Waiting 10.0s before next page...
+2025-10-16 01:36:13,783 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:36:18,016 - INFO - [OK] Page 1: Found 960 items
+2025-10-16 01:36:18,023 - INFO - [TOTAL] API: 960 items, 1 pages available
+2025-10-16 01:36:18,024 - INFO -  No more pages available
+2025-10-16 01:36:18,024 - INFO - [WAIT] Waiting 13.5s before next page...
+2025-10-16 01:36:31,539 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:36:31,833 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:36:31,833 - ERROR - [ERROR] Attempt 1 failed: HTTP 403
+2025-10-16 01:36:31,833 - INFO - [WAIT] Retrying in 1.9s...
+2025-10-16 01:36:33,748 - INFO - [PAGE] Page 1/10 - Attempt 2
+2025-10-16 01:36:34,039 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:36:34,040 - ERROR - [ERROR] Attempt 2 failed: HTTP 403
+2025-10-16 01:36:34,041 - INFO - [WAIT] Retrying in 3.6s...
+2025-10-16 01:36:37,666 - INFO - [PAGE] Page 1/10 - Attempt 3
+2025-10-16 01:36:37,924 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:36:37,925 - ERROR - [ERROR] Attempt 3 failed: HTTP 403
+2025-10-16 01:36:37,925 - WARNING - [WARNING] All retries exhausted for page 1
+2025-10-16 01:36:37,925 - INFO - [OK] Combo complete: 90,235 items from Dresses
+2025-10-16 01:36:37,925 - INFO - [PAUSE]  Waiting 23.3s before next combo...
+2025-10-16 01:37:01,263 - INFO - 
+======================================================================
+2025-10-16 01:37:01,263 - INFO - [2/4] SCRAPING COMBO
+2025-10-16 01:37:01,263 - INFO - ======================================================================
+2025-10-16 01:37:01,263 - INFO - [CATEGORIES] Category: Sneakers
+2025-10-16 01:37:01,263 - INFO - [AUDIENCE] Audience: Men
+2025-10-16 01:37:01,263 - INFO - [TOP 15 BRANDS]  Brand: ALL BRANDS
+2025-10-16 01:37:01,263 - INFO - [TOTAL] Order: newest_first
+2025-10-16 01:37:01,263 - INFO - [PAGE] Max Pages: 10
+2025-10-16 01:37:01,263 - INFO - ======================================================================
+2025-10-16 01:37:01,263 - INFO - [PAGE] Page 1/10 - Attempt 1
+2025-10-16 01:37:01,530 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:01,530 - ERROR - [ERROR] Attempt 1 failed: HTTP 403
+2025-10-16 01:37:01,530 - INFO - [WAIT] Retrying in 2.0s...
+2025-10-16 01:37:03,525 - INFO - [PAGE] Page 1/10 - Attempt 2
+2025-10-16 01:37:03,782 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:03,782 - ERROR - [ERROR] Attempt 2 failed: HTTP 403
+2025-10-16 01:37:03,782 - INFO - [WAIT] Retrying in 3.6s...
+2025-10-16 01:37:07,344 - INFO - [PAGE] Page 1/10 - Attempt 3
+2025-10-16 01:37:07,610 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:07,612 - ERROR - [ERROR] Attempt 3 failed: HTTP 403
+2025-10-16 01:37:07,612 - WARNING - [WARNING] All retries exhausted for page 1
+2025-10-16 01:37:07,612 - INFO - [OK] Combo complete: 0 items from Sneakers
+2025-10-16 01:37:07,613 - INFO - [PAUSE]  Waiting 15.5s before next combo...
+2025-10-16 01:37:23,108 - INFO - 
+======================================================================
+2025-10-16 01:37:23,109 - INFO - [3/4] SCRAPING COMBO
+2025-10-16 01:37:23,110 - INFO - ======================================================================
+2025-10-16 01:37:23,111 - INFO - [CATEGORIES] Category: Jeans
+2025-10-16 01:37:23,111 - INFO - [AUDIENCE] Audience: Men
+2025-10-16 01:37:23,112 - INFO - [TOP 15 BRANDS]  Brand: ALL BRANDS
+2025-10-16 01:37:23,113 - INFO - [TOTAL] Order: newest_first
+2025-10-16 01:37:23,114 - INFO - [PAGE] Max Pages: 8
+2025-10-16 01:37:23,114 - INFO - ======================================================================
+2025-10-16 01:37:23,114 - INFO - [PAGE] Page 1/8 - Attempt 1
+2025-10-16 01:37:23,381 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:23,381 - ERROR - [ERROR] Attempt 1 failed: HTTP 403
+2025-10-16 01:37:23,381 - INFO - [WAIT] Retrying in 2.1s...
+2025-10-16 01:37:25,502 - INFO - [PAGE] Page 1/8 - Attempt 2
+2025-10-16 01:37:25,744 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:25,744 - ERROR - [ERROR] Attempt 2 failed: HTTP 403
+2025-10-16 01:37:25,744 - INFO - [WAIT] Retrying in 3.6s...
+2025-10-16 01:37:29,383 - INFO - [PAGE] Page 1/8 - Attempt 3
+2025-10-16 01:37:29,617 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:29,617 - ERROR - [ERROR] Attempt 3 failed: HTTP 403
+2025-10-16 01:37:29,617 - WARNING - [WARNING] All retries exhausted for page 1
+2025-10-16 01:37:29,617 - INFO - [OK] Combo complete: 0 items from Jeans
+2025-10-16 01:37:29,617 - INFO - [PAUSE]  Waiting 22.4s before next combo...
+2025-10-16 01:37:52,043 - INFO - 
+======================================================================
+2025-10-16 01:37:52,043 - INFO - [4/4] SCRAPING COMBO
+2025-10-16 01:37:52,043 - INFO - ======================================================================
+2025-10-16 01:37:52,043 - INFO - [CATEGORIES] Category: T-shirt
+2025-10-16 01:37:52,043 - INFO - [AUDIENCE] Audience: Men
+2025-10-16 01:37:52,043 - INFO - [TOP 15 BRANDS]  Brand: ALL BRANDS
+2025-10-16 01:37:52,043 - INFO - [TOTAL] Order: newest_first
+2025-10-16 01:37:52,043 - INFO - [PAGE] Max Pages: 8
+2025-10-16 01:37:52,043 - INFO - ======================================================================
+2025-10-16 01:37:52,043 - INFO - [PAGE] Page 1/8 - Attempt 1
+2025-10-16 01:37:52,288 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:52,288 - ERROR - [ERROR] Attempt 1 failed: HTTP 403
+2025-10-16 01:37:52,288 - INFO - [WAIT] Retrying in 2.3s...
+2025-10-16 01:37:54,640 - INFO - [PAGE] Page 1/8 - Attempt 2
+2025-10-16 01:37:54,875 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:54,875 - ERROR - [ERROR] Attempt 2 failed: HTTP 403
+2025-10-16 01:37:54,875 - INFO - [WAIT] Retrying in 3.9s...
+2025-10-16 01:37:58,780 - INFO - [PAGE] Page 1/8 - Attempt 3
+2025-10-16 01:37:59,020 - ERROR - [ERROR] HTTP 403: <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vinted</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue","Helvetic
+2025-10-16 01:37:59,036 - ERROR - [ERROR] Attempt 3 failed: HTTP 403
+2025-10-16 01:37:59,036 - WARNING - [WARNING] All retries exhausted for page 1
+2025-10-16 01:37:59,036 - INFO - [OK] Combo complete: 0 items from T-shirt
+2025-10-16 01:37:59,282 - INFO - [CLEAN] Removed 88629 duplicate items
+2025-10-16 01:37:59,298 - INFO - 
+======================================================================
+2025-10-16 01:37:59,298 - INFO - [OK] SCRAPING COMPLETE
+2025-10-16 01:37:59,298 - INFO - ======================================================================
+2025-10-16 01:37:59,298 - INFO - [TOTAL] Total unique items: 1,606
+2025-10-16 01:37:59,298 - INFO - [FILE] Saved to: E:\work source\Vinted\data\scrapes\vinted_scrape_2025-10-16_013759.csv
+2025-10-16 01:37:59,298 - INFO - 
+[CATEGORIES] Items by Category:
+2025-10-16 01:37:59,305 - INFO -    Dresses             :  1,606 (100.0%)
+2025-10-16 01:37:59,305 - INFO - 
+[TOP 15 BRANDS]  Top 15 Brands:
+2025-10-16 01:37:59,305 - INFO -                        :    135 (  8.4%)
+2025-10-16 01:37:59,305 - INFO -    Zara                :    127 (  7.9%)
+2025-10-16 01:37:59,305 - INFO -    Shein               :     78 (  4.9%)
+2025-10-16 01:37:59,305 - INFO -    H&M                 :     47 (  2.9%)
+2025-10-16 01:37:59,305 - INFO -    Mango               :     44 (  2.7%)
+2025-10-16 01:37:59,305 - INFO -    Local               :     33 (  2.1%)
+2025-10-16 01:37:59,305 - INFO -    Made In Italy       :     27 (  1.7%)
+2025-10-16 01:37:59,305 - INFO -    Bershka             :     25 (  1.6%)
+2025-10-16 01:37:59,305 - INFO -    Promod              :     21 (  1.3%)
+2025-10-16 01:37:59,305 - INFO -    Vintage Dressing    :     18 (  1.1%)
+2025-10-16 01:37:59,305 - INFO -    ONLY                :     18 (  1.1%)
+2025-10-16 01:37:59,305 - INFO -    Naf Naf             :     17 (  1.1%)
+2025-10-16 01:37:59,305 - INFO -    Desigual            :     17 (  1.1%)
+2025-10-16 01:37:59,305 - INFO -    Morgan              :     16 (  1.0%)
+2025-10-16 01:37:59,305 - INFO -    Pull & Bear         :     15 (  0.9%)
+2025-10-16 01:37:59,305 - INFO - 
+[AUDIENCE] Items by Audience:
+2025-10-16 01:37:59,305 - INFO -    Women               :  1,606 (100.0%)
+2025-10-16 01:37:59,314 - INFO - 
+[DATE RANGE] Published Date Range:
+2025-10-16 01:37:59,314 - INFO -   Earliest: 2025-07-23 16:01
+2025-10-16 01:37:59,314 - INFO -   Latest:   2025-10-16 01:35
+2025-10-16 01:37:59,314 - INFO -   Span:     84 days
+2025-10-16 01:37:59,314 - INFO -   Unique dates: 9
+2025-10-16 01:37:59,314 - INFO - 
+[PRICES (EUR)] Price Statistics (EUR):
+2025-10-16 01:37:59,314 - INFO -   Min:         1.00
+2025-10-16 01:37:59,314 - INFO -   P25:         5.00
+2025-10-16 01:37:59,314 - INFO -   Median:     10.00
+2025-10-16 01:37:59,314 - INFO -   P75:        18.99
+2025-10-16 01:37:59,314 - INFO -   Max:      1000.00
+2025-10-16 01:37:59,314 - INFO -   Mean:       18.17
+2025-10-16 01:37:59,314 - INFO - 
+[SEASONS]  Items by Season:
+2025-10-16 01:37:59,314 - INFO -    summer              :      5 (  0.3%)
+2025-10-16 01:37:59,314 - INFO -    winter              :      3 (  0.2%)
+2025-10-16 01:37:59,314 - INFO - 
+======================================================================
+2025-10-16 01:37:59,314 - INFO - [OK] Ready for processing! Run: python process_data.py
+2025-10-16 01:37:59,314 - INFO - ======================================================================
+
+2025-10-16 01:37:59,314 - INFO - Ended at: 2025-10-16 01:37:59

@@ -1,13 +1,11 @@
 """
-Market Intelligence Dashboard - CLIENT FIXES APPLIED
+Market Intelligence Dashboard - COMPLETE FIX
 Changes:
-1. Removed all "Vinted" references
-2. Fixed total listings count (active + sold)
-3. Fixed DTS calculation (uses corrected process_data.py)
-4. Fixed sell-through calculation (includes unsold items)
-5. Enhanced PDF with charts
-6. Fixed Price Calculator layout
-7. New color scheme: Blue #006064, Cyan #00FFFF
+1. All calculations use listings.parquet as single source of truth
+2. Fixed liquidity score capping at 100
+3. Fixed sell-through capping at 100%
+4. Correct sold counts everywhere
+5. Removed listing_url and scrape_filename from downloads
 """
 import streamlit as st
 import pandas as pd
@@ -15,20 +13,22 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-import tempfile
-import plotly.io as pio
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.enums import TA_CENTER
 
 # CLIENT COLORS
 PRIMARY_BLUE = '#006064'
 ACCENT_CYAN = '#00FFFF'
+
+def safe_sorted(series):
+    """Safely sort a pandas series, removing None/NaN values"""
+    return sorted([x for x in series.dropna().unique() if x is not None])
 
 sys.path.append(str(Path(__file__).parent))
 
@@ -64,13 +64,13 @@ st.markdown(f"""
 @st.cache_data(ttl=3600)
 def load_dashboard_data():
     try:
-        listings_df, price_events_df, sold_events_df = load_all_data()
-        return listings_df, price_events_df, sold_events_df
+        listings_df, price_events_df = load_all_data()
+        return listings_df, price_events_df
     except Exception as e:
         st.error(f"Error loading data: {e}")
-        return None, None, None
+        return None, None
 
-listings_df, price_events_df, sold_events_df = load_dashboard_data()
+listings_df, price_events_df = load_dashboard_data()
 
 if listings_df is None:
     st.stop()
@@ -91,48 +91,43 @@ page = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 
-# FIXED: Data Summary - Correct counts
-st.sidebar.markdown("###Data Summary")
+# FIXED: Data Summary with correct counts
+st.sidebar.markdown("### Data Summary")
 
-# FIXED: Total listings = active + sold (unique items only)
 active_count = len(listings_df[listings_df['status'] == 'active'])
 sold_count = len(listings_df[listings_df['status'] == 'sold'])
-total_count = active_count + sold_count
+total_count = len(listings_df)
 
 st.sidebar.metric("Total Listings", f"{total_count:,}")
-st.sidebar.caption(f"Active ({active_count:,}) + Sold ({sold_count:,})")
+st.sidebar.caption(f"Unique items tracked")
 
 st.sidebar.metric("Active Items", f"{active_count:,}")
 st.sidebar.caption("Currently listed")
 
-# FIXED: Use sold status from listings, not sold_events
 st.sidebar.metric("Sold Items", f"{sold_count:,}")
 st.sidebar.caption("Detected sales")
 
-# Price changes
 st.sidebar.metric("Price Changes", f"{len(price_events_df):,}")
 
 if 'scrape_timestamp' in listings_df.columns:
     last_update = pd.to_datetime(listings_df['scrape_timestamp']).max()
     st.sidebar.info(f"Updated: {last_update.strftime('%Y-%m-%d %H:%M')}")
 
-# FIXED: Better explanation
-with st.sidebar.expander("How Data is Counted"):
+with st.sidebar.expander("ℹ️ About Data Tracking"):
     st.markdown("""
-    **Total Listings**: Active + Sold items  
-    _(Should match sum above)_
+    **How we count items:**
+    - **Total = Active + Sold** (unique items)
+    - Items marked "sold" when missing ≥48h
+    - DTS = (estimated_sold_at - first_seen_at)
     
-    **Active Items**: Currently available
-    
-    **Sold Items**: Disappeared ≥48h ago  
-    _(DTS calculation uses first_seen → estimated_sold)_
-    
-    **Why only tracked brands?**  
-    Rankings show target brands only (Zara, H&M, etc.)  
-    Total database includes all brands found.
+    **Why tracked brands only in rankings?**
+    Rankings focus on target brands (Nike, Zara, etc.)  
+    Total database includes all marketplace brands.
     """)
+
+
 def generate_enhanced_pdf(filtered_all, filtered_sold, brand, category, audience, season):
-    """Generate PDF with embedded charts and comprehensive statistics"""
+    """Generate PDF report without Vinted references"""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, 
@@ -170,7 +165,7 @@ def generate_enhanced_pdf(filtered_all, filtered_sold, brand, category, audience
     
     story.append(Paragraph(title_text, title_style))
     story.append(Paragraph(
-        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Comprehensive Market Intelligence", 
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Secondary Market Intelligence", 
         styles['Normal']
     ))
     story.append(Spacer(1, 0.2*inch))
@@ -186,17 +181,18 @@ def generate_enhanced_pdf(filtered_all, filtered_sold, brand, category, audience
     ]
     
     if len(filtered_sold) > 0 and 'first_seen_at' in filtered_sold.columns:
+        # Calculate DTS correctly
         filtered_sold_calc = filtered_sold.copy()
+        filtered_sold_calc['estimated_sold_at'] = pd.to_datetime(filtered_sold_calc['last_seen_at']) + timedelta(hours=24)
         filtered_sold_calc['dts'] = (
-            pd.to_datetime(filtered_sold_calc['last_seen_at']) - 
-            pd.to_datetime(filtered_sold_calc['first_seen_at'])
-        ).dt.total_seconds() / (24 * 3600) + 1
+            filtered_sold_calc['estimated_sold_at'] - pd.to_datetime(filtered_sold_calc['first_seen_at'])
+        ).dt.total_seconds() / (24 * 3600)
         
         summary_data.append(['Median DTS', f"{filtered_sold_calc['dts'].median():.1f} days"])
         summary_data.append(['Mean DTS', f"{filtered_sold_calc['dts'].mean():.1f} days"])
         
         sold_30d = len(filtered_sold_calc[filtered_sold_calc['dts'] <= 30])
-        st_rate = (sold_30d / len(filtered_all)) * 100
+        st_rate = min((sold_30d / len(filtered_all)) * 100, 100.0)  # Cap at 100%
         summary_data.append(['30d Sell-Through Rate', f"{st_rate:.1f}%"])
         summary_data.append(['Items Sold ≤30 Days', f"{sold_30d:,}"])
     
@@ -230,7 +226,7 @@ def generate_enhanced_pdf(filtered_all, filtered_sold, brand, category, audience
         cond_sold = filtered_sold[filtered_sold['condition_bucket'] == condition] if len(filtered_sold) > 0 else pd.DataFrame()
         cond_active = cond_all[cond_all['status'] == 'active']
         
-        st_rate = (len(cond_sold) / len(cond_all)) * 100 if len(cond_all) > 0 else 0
+        st_rate = min((len(cond_sold) / len(cond_all)) * 100, 100.0) if len(cond_all) > 0 else 0
         median_price = cond_all['price'].median() if len(cond_all) > 0 else 0
         
         condition_data.append([
@@ -258,70 +254,17 @@ def generate_enhanced_pdf(filtered_all, filtered_sold, brand, category, audience
     story.append(cond_table)
     story.append(Spacer(1, 0.3*inch))
     
-    # Price statistics by condition
-    story.append(Paragraph("Price Statistics by Condition", heading_style))
-    
-    price_data = [['Condition', 'Min', 'P25', 'Median', 'P75', 'Max']]
-    
-    for condition in sorted(filtered_all['condition_bucket'].unique()):
-        cond_all = filtered_all[filtered_all['condition_bucket'] == condition]
-        if len(cond_all) > 0:
-            price_data.append([
-                condition,
-                f"EUR {cond_all['price'].min():.2f}",
-                f"EUR {cond_all['price'].quantile(0.25):.2f}",
-                f"EUR {cond_all['price'].median():.2f}",
-                f"EUR {cond_all['price'].quantile(0.75):.2f}",
-                f"EUR {cond_all['price'].max():.2f}"
-            ])
-    
-    price_table = Table(price_data, colWidths=[2*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch])
-    price_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
-    ]))
-    
-    story.append(price_table)
-    
     # Footer
-    story.append(Spacer(1, 0.3*inch))
-    footer_text = f"Report generated from Market Intelligence Dashboard | {len(filtered_all):,} items analyzed | Methodology: 48h scraping interval with confidence scoring"
+    footer_text = f"Report generated from Market Intelligence Dashboard | {len(filtered_all):,} items analyzed"
     story.append(Paragraph(footer_text, styles['Italic']))
     
-    # Methodology note
-    story.append(Spacer(1, 0.2*inch))
-    methodology = """
-    <b>Calculation Notes:</b><br/>
-    • <b>DTS (Days to Sell)</b>: Calculated from first_seen_at to estimated_sold_at (last_seen_at + 24 hours)<br/>
-    • <b>Sell-Through Rate</b>: (Items sold ≤30 days) / (Total items in segment) × 100<br/>
-    • <b>Sold Detection</b>: Items missing for ≥48 hours with confidence scoring (0.5-1.0)
-    """
-    story.append(Paragraph(methodology, styles['Normal']))
-    
-    # Build PDF
     try:
         doc.build(story)
         buffer.seek(0)
         return buffer
     except Exception as e:
-        # If build fails, return simple error PDF
-        error_buffer = io.BytesIO()
-        error_doc = SimpleDocTemplate(error_buffer, pagesize=letter)
-        error_story = [
-            Paragraph("PDF Generation Error", title_style),
-            Spacer(1, 0.2*inch),
-            Paragraph(f"Error: {str(e)}", styles['Normal']),
-            Spacer(1, 0.2*inch),
-            Paragraph("Please ensure reportlab is installed: pip install reportlab", styles['Normal'])
-        ]
-        error_doc.build(error_story)
-        error_buffer.seek(0)
-        return error_buffer
+        st.error(f"PDF generation error: {e}")
+        return None
 
 
 # ============================================================================
@@ -329,7 +272,7 @@ def generate_enhanced_pdf(filtered_all, filtered_sold, brand, category, audience
 # ============================================================================
 
 if "Overview" in page:
-    st.markdown(f'<p class="main-header">Market Overview</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">📊 Market Overview</p>', unsafe_allow_html=True)
     
     st.markdown("Liquidity ranking by brand. **Liquidity Score** = 0-100 (higher = faster sales)")
     st.markdown("---")
@@ -370,7 +313,7 @@ if "Overview" in page:
     if condition_filter_val:
         filtered_for_condition = filtered_for_condition[filtered_for_condition['condition_bucket'] == condition_filter_val]
     
-    brands = sorted(filtered_for_condition['brand_norm'].unique())
+    brands = safe_sorted(filtered_for_condition['brand_norm'])
     
     liquidity_data = []
     for brand in brands:
@@ -397,7 +340,7 @@ if "Overview" in page:
                 'DTS (days)': kpis['dts']['median'],
                 'Sell-Through 30d (%)': kpis['sell_through_30d']['percentage'],
                 'Total Items': kpis['sell_through_30d']['total_items'],
-                'Sold Items': kpis['sell_through_30d']['sold_30d']
+                'Sold Items': kpis['sell_through_30d']['total_sold']
             })
     
     if liquidity_data:
@@ -430,7 +373,6 @@ if "Overview" in page:
             - **D (0-24)**: Poor
             """)
             
-            # FIXED: Explanation for count difference
             st.info(f"""
             **Why {len(liquidity_df)} brands?**
             
@@ -485,18 +427,18 @@ if "Overview" in page:
         st.warning("Not enough data with selected filters")
 
 # ============================================================================
-# PAGE 2: BRAND·CATEGORY ANALYSIS (FIXED)
+# PAGE 2: BRAND·CATEGORY ANALYSIS
 # ============================================================================
 
 elif "Brand·Category Analysis" in page:
-    st.markdown(f'<p class="main-header">Brand·Category Analysis</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">🔍 Brand·Category Analysis</p>', unsafe_allow_html=True)
     
     st.info("Analyzing both sold AND unsold items for accurate sell-through calculations")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        brands = ['All'] + sorted(listings_df['brand_norm'].unique().tolist())
+        brands = ['All'] + safe_sorted(listings_df['brand_norm'])
         selected_brand = st.selectbox("Brand", brands)
     
     with col2:
@@ -521,7 +463,7 @@ elif "Brand·Category Analysis" in page:
     
     st.markdown("---")
     
-    # FIXED: Filter all listings (not just sold)
+    # Filter all listings
     filtered_all = listings_df.copy()
     
     if brand_filter:
@@ -540,6 +482,13 @@ elif "Brand·Category Analysis" in page:
     # Get sold subset
     filtered_sold = filtered_all[filtered_all['status'] == 'sold'].copy()
     
+    # Calculate DTS for sold items
+    if len(filtered_sold) > 0:
+        filtered_sold['estimated_sold_at'] = pd.to_datetime(filtered_sold['last_seen_at']) + timedelta(hours=24)
+        filtered_sold['dts_calc'] = (
+            filtered_sold['estimated_sold_at'] - pd.to_datetime(filtered_sold['first_seen_at'])
+        ).dt.total_seconds() / (24 * 3600)
+    
     # KPI Cards
     st.subheader("Overall KPIs")
     
@@ -554,12 +503,7 @@ elif "Brand·Category Analysis" in page:
         st.caption(f"({len(filtered_sold)/len(filtered_all)*100:.1f}% of total)")
     
     with col3:
-        if len(filtered_sold) > 0 and 'first_seen_at' in filtered_sold.columns and 'last_seen_at' in filtered_sold.columns:
-            # Calculate DTS from first_seen to last_seen (+24h)
-            filtered_sold['dts_calc'] = (
-                pd.to_datetime(filtered_sold['last_seen_at']) - 
-                pd.to_datetime(filtered_sold['first_seen_at'])
-            ).dt.total_seconds() / (24 * 3600) + 1  # +24h adjustment
+        if len(filtered_sold) > 0 and 'dts_calc' in filtered_sold.columns:
             median_dts = filtered_sold['dts_calc'].median()
             st.metric("Median DTS", f"{median_dts:.1f} days")
             st.caption("From first seen to sold")
@@ -568,11 +512,9 @@ elif "Brand·Category Analysis" in page:
             st.caption("No sold items yet")
     
     with col4:
-        # FIXED: Correct sell-through formula
-        if len(filtered_sold) > 0:
-            # Items sold within 30 days
-            sold_30d = len(filtered_sold[filtered_sold['dts_calc'] <= 30]) if 'dts_calc' in filtered_sold.columns else 0
-            st_rate = (sold_30d / len(filtered_all)) * 100  # FIXED: Denominator is ALL items
+        if len(filtered_sold) > 0 and 'dts_calc' in filtered_sold.columns:
+            sold_30d = len(filtered_sold[filtered_sold['dts_calc'] <= 30])
+            st_rate = min((sold_30d / len(filtered_all)) * 100, 100.0)  # Cap at 100%
             st.metric("30d Sell-Through", f"{st_rate:.1f}%")
             st.caption(f"{sold_30d}/{len(filtered_all)} items")
         else:
@@ -581,7 +523,7 @@ elif "Brand·Category Analysis" in page:
     
     st.markdown("---")
     
-    # FIXED: Charts showing BOTH sold and unsold
+    # Charts
     st.subheader("Analysis by Condition")
     
     col1, col2 = st.columns(2)
@@ -637,8 +579,8 @@ elif "Brand·Category Analysis" in page:
         
         st.plotly_chart(fig, use_container_width=True)
     
-    # FIXED: Correct sell-through by condition
-    st.markdown("### 30-Day Sell-Through by Condition (CORRECTED)")
+    # Sell-through by condition
+    st.markdown("### 30-Day Sell-Through by Condition")
     
     st_by_condition = []
     for condition in sorted(filtered_all['condition_bucket'].unique()):
@@ -647,7 +589,7 @@ elif "Brand·Category Analysis" in page:
         
         if len(all_cond) > 0:
             sold_30d = len(sold_cond[sold_cond['dts_calc'] <= 30]) if 'dts_calc' in sold_cond.columns and len(sold_cond) > 0 else 0
-            st_rate = (sold_30d / len(all_cond)) * 100  # FIXED: Correct denominator
+            st_rate = min((sold_30d / len(all_cond)) * 100, 100.0)  # Cap at 100%
             
             st_by_condition.append({
                 'condition': condition,
@@ -705,40 +647,40 @@ elif "Brand·Category Analysis" in page:
         else:
             st.info("No active items in this segment")
     
-    # PDF Generation with charts
+    # PDF Generation
     st.markdown("---")
     st.subheader("Generate PDF Report")
     
     if st.button("Generate Enhanced PDF", type="primary"):
-        with st.spinner("Generating PDF with charts..."):
+        with st.spinner("Generating PDF..."):
             try:
-                # Create PDF with charts
                 pdf_buffer = generate_enhanced_pdf(
                     filtered_all, filtered_sold,
                     brand_filter, category_filter, audience_filter, season_filter
                 )
                 
-                filename = f"market_analysis_{datetime.now().strftime('%Y%m%d')}.pdf"
-                if brand_filter:
-                    filename = f"{brand_filter.lower().replace(' ', '_')}_{filename}"
-                
-                st.download_button(
-                    label="Download PDF Report",
-                    data=pdf_buffer,
-                    file_name=filename,
-                    mime="application/pdf"
-                )
-                st.success(f"Generated: {filename}")
+                if pdf_buffer:
+                    filename = f"market_analysis_{datetime.now().strftime('%Y%m%d')}.pdf"
+                    if brand_filter:
+                        filename = f"{brand_filter.lower().replace(' ', '_')}_{filename}"
+                    
+                    st.download_button(
+                        label="📥 Download PDF Report",
+                        data=pdf_buffer,
+                        file_name=filename,
+                        mime="application/pdf"
+                    )
+                    st.success(f"✅ Generated: {filename}")
                 
             except Exception as e:
                 st.error(f"❌ Error generating PDF: {e}")
 
 # ============================================================================
-# PAGE 3: PRICE CALCULATOR (FIXED LAYOUT)
+# PAGE 3: PRICE CALCULATOR
 # ============================================================================
 
 elif "Price Calculator" in page:
-    st.markdown(f'<p class="main-header">Smart Price Calculator</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">💰 Smart Price Calculator</p>', unsafe_allow_html=True)
     
     st.markdown("Get pricing recommendations and estimated time-to-sell")
     st.markdown("---")
@@ -750,7 +692,7 @@ elif "Price Calculator" in page:
         
         calc_brand = st.selectbox(
             "Brand",
-            sorted(listings_df['brand_norm'].unique()),
+            safe_sorted(listings_df['brand_norm']),
             key="calc_brand"
         )
         
@@ -813,10 +755,11 @@ elif "Price Calculator" in page:
             calc_sold = calc_filtered[calc_filtered['status'] == 'sold']
             
             if len(calc_sold) > 0 and 'first_seen_at' in calc_sold.columns:
+                calc_sold = calc_sold.copy()
+                calc_sold['estimated_sold_at'] = pd.to_datetime(calc_sold['last_seen_at']) + timedelta(hours=24)
                 calc_sold['dts_calc'] = (
-                    pd.to_datetime(calc_sold['last_seen_at']) - 
-                    pd.to_datetime(calc_sold['first_seen_at'])
-                ).dt.total_seconds() / (24 * 3600) + 1
+                    calc_sold['estimated_sold_at'] - pd.to_datetime(calc_sold['first_seen_at'])
+                ).dt.total_seconds() / (24 * 3600)
                 
                 dts_median = calc_sold['dts_calc'].median()
                 dts_p25 = calc_sold['dts_calc'].quantile(0.25)
@@ -830,7 +773,7 @@ elif "Price Calculator" in page:
                 """)
                 
                 if dts_median < 10:
-                    st.success("High demand! Premium pricing recommended")
+                    st.success("🔥 High demand! Premium pricing recommended")
                 elif dts_median < 20:
                     st.info("✅ Good demand. Market price recommended")
                 else:
@@ -848,31 +791,25 @@ elif "Price Calculator" in page:
                 step=1.0
             )
             
-            # FIXED: Better layout for positioning
-            st.markdown("####Price Positioning")
+            st.markdown("#### Price Positioning")
             
             if your_price <= p25:
                 percentile = "Budget Tier"
                 emoji = "🟢"
                 desc = "Bottom 25% - Fast sale expected"
-                color_code = "green"
             elif your_price <= p50:
                 percentile = "Below Market"
                 emoji = "🟡"
                 desc = "25-50% range - Good value"
-                color_code = "orange"
             elif your_price <= p75:
                 percentile = "Above Market"
                 emoji = "🟠"
                 desc = "50-75% range - Premium pricing"
-                color_code = "orange"
             else:
                 percentile = "Premium Tier"
                 emoji = "🔴"
                 desc = "Top 25% - Slower sale possible"
-                color_code = "red"
             
-            # FIXED: Display with clear formatting
             st.markdown(f"""
             <div style='padding: 1rem; background-color: #f0f2f6; border-radius: 0.5rem; border-left: 4px solid {PRIMARY_BLUE};'>
                 <h3 style='margin: 0; color: {PRIMARY_BLUE};'>{emoji} {percentile}</h3>
@@ -885,7 +822,7 @@ elif "Price Calculator" in page:
             
             # Estimated DTS based on price
             if len(calc_sold) > 0 and 'dts_calc' in calc_sold.columns:
-                st.markdown("####Estimated Days to Sell")
+                st.markdown("#### Estimated Days to Sell")
                 
                 if your_price <= p25:
                     estimated_dts = dts_p25
@@ -906,42 +843,58 @@ elif "Price Calculator" in page:
             st.error("❌ No comparable items found for this combination")
 
 # ============================================================================
-# PAGE 4: DOWNLOADS
+# PAGE 4: DOWNLOADS (FIXED - Remove sensitive columns)
 # ============================================================================
 
 elif "Downloads" in page:
-    st.markdown(f'<p class="main-header">Downloads</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">📥 Downloads</p>', unsafe_allow_html=True)
+    
+    st.info("⚠️ Note: listing_url and scrape_filename columns removed for privacy")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("CSV Exports")
         
-        active_df = listings_df[listings_df['status'] == 'active']
+        # FIXED: Remove sensitive columns
+        columns_to_remove = ['listing_url', 'scrape_filename']
+        
+        # Active items
+        active_df = listings_df[listings_df['status'] == 'active'].copy()
+        for col in columns_to_remove:
+            if col in active_df.columns:
+                active_df = active_df.drop(columns=[col])
+        
         csv_active = active_df.to_csv(index=False)
         st.download_button(
-            " Download Active Items (CSV)",
+            "📄 Download Active Items (CSV)",
             csv_active,
             f"active_listings_{datetime.now().strftime('%Y%m%d')}.csv",
             "text/csv"
         )
         st.info(f"{len(active_df):,} items")
         
-        sold_df = listings_df[listings_df['status'] == 'sold']
+        # Sold items
+        sold_df = listings_df[listings_df['status'] == 'sold'].copy()
         if len(sold_df) > 0:
+            for col in columns_to_remove:
+                if col in sold_df.columns:
+                    sold_df = sold_df.drop(columns=[col])
+            
             csv_sold = sold_df.to_csv(index=False)
             st.download_button(
-                "Download Sold Items (CSV)",
+                "📄 Download Sold Items (CSV)",
                 csv_sold,
                 f"sold_listings_{datetime.now().strftime('%Y%m%d')}.csv",
                 "text/csv"
             )
             st.info(f"{len(sold_df):,} items")
         
+        # Price changes
         if len(price_events_df) > 0:
             csv_prices = price_events_df.to_csv(index=False)
             st.download_button(
-                "Download Price Changes (CSV)",
+                "📄 Download Price Changes (CSV)",
                 csv_prices,
                 f"price_changes_{datetime.now().strftime('%Y%m%d')}.csv",
                 "text/csv"
@@ -949,15 +902,34 @@ elif "Downloads" in page:
             st.info(f"{len(price_events_df):,} events")
     
     with col2:
-        st.subheader("Reports")
+        st.subheader("Data Dictionary")
+        
+        st.markdown("""
+        **Columns included:**
+        - `item_id`: Unique identifier
+        - `brand_norm`: Normalized brand name
+        - `category_norm`: Normalized category
+        - `condition_bucket`: Condition tier
+        - `price`: Price in EUR
+        - `status`: active/sold
+        - `first_seen_at`: First detection date
+        - `last_seen_at`: Last seen date
+        - `audience`: Target demographic
+        
+        **Columns removed for privacy:**
+        - ~~listing_url~~ (platform reference)
+        - ~~scrape_filename~~ (internal tracking)
+        """)
+        
+        st.markdown("---")
+        st.subheader("Generate Custom Reports")
         st.info("Use 'Brand·Category Analysis' page to generate PDF reports with visualizations")
 
-
-
+# Footer
 st.markdown("---")
 st.markdown(f"""
 <div style='text-align: center; color: #666; padding: 1rem;'>
     <p><strong>Market Intelligence Dashboard</strong> | {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
-    <p style='font-size: 0.8rem;'>Data source: Marketplace scraping engine</p>
+    <p style='font-size: 0.8rem;'>Secondary market analytics platform</p>
 </div>
 """, unsafe_allow_html=True)

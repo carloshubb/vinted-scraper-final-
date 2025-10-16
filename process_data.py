@@ -148,7 +148,7 @@ def process_new_scrape(current_df, scrape_filename):
     # Add timestamp
     current_timestamp = datetime.now()
     current_df['scrape_timestamp'] = current_timestamp
-    current_df['scrape_filename'] = scrape_filename
+    # current_df['scrape_filename'] = scrape_filename
     
     # Apply normalizations
     current_df['brand_norm'] = current_df['brand_raw'].apply(normalize_brand)
@@ -161,6 +161,7 @@ def process_new_scrape(current_df, scrape_filename):
     # Add status field
     if 'status' not in current_df.columns:
         current_df['status'] = 'active'
+
     
     # Add first_seen_at and last_seen_at
     current_df['first_seen_at'] = current_timestamp
@@ -453,7 +454,9 @@ def generate_summary_report(listings_df, price_events_df, sold_events_df):
         logger.warning(f"  ⚠ MISMATCH: Expected {total_count}, got {active_count + sold_count}")
     
     logger.info("\nListings by Brand:")
-    for brand in sorted(listings_df['brand_norm'].unique()):
+    # Fix: Remove NaN values before sorting
+    brands = listings_df['brand_norm'].dropna().unique()
+    for brand in sorted(brands):
         count = len(listings_df[listings_df['brand_norm'] == brand])
         active = len(listings_df[(listings_df['brand_norm'] == brand) & (listings_df['status'] == 'active')])
         logger.info(f"  {brand}: {count} total ({active} active)")
@@ -469,7 +472,6 @@ def generate_summary_report(listings_df, price_events_df, sold_events_df):
         logger.info(f"  Max: {sold_events_df['days_to_sell'].max():.1f} days")
     
     logger.info("="*60 + "\n")
-
 
 def process_pipeline():
     """Main data processing pipeline."""

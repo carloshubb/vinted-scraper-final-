@@ -27,7 +27,7 @@ try:
     SCRAPING_HOURS = config['scraping_hours']
     REQUEST_SETTINGS = config['request_settings']
 except ImportError:
-    logger.error("❌ scraper_config.py not found! Using default settings.")
+    logger.error("[ERROR] scraper_config.py not found! Using default settings.")
     sys.exit(1)
 
 # Logging setup with UTF-8 support for Windows
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # Season keywords
 season_keywords = {
     "summer": ["SS24", "SS25", "spring/summer", "verano", "primavera/verano", "summer"],
-    "winter": ["FW24", "FW25", "fall/winter", "invierno", "otoño/invierno", "winter"]
+    "winter": ["FW24", "FW25", "fall/winter", "invierno", "otoo/invierno", "winter"]
 }
 
 def extract_season(title, description):
@@ -115,7 +115,7 @@ def is_scraping_hours():
     if start <= current_hour <= end:
         return True
     
-    logger.warning(f"⏰ Outside scraping window (current: {current_hour}:00, allowed: {start}:00-{end}:00)")
+    logger.warning(f" Outside scraping window (current: {current_hour}:00, allowed: {start}:00-{end}:00)")
     return False
 
 def random_delay(delay_range):
@@ -137,8 +137,8 @@ def scrape_vinted(headless=True):
     
     # Randomly select user agent
     selected_ua = random.choice(USER_AGENTS)
-    logger.info(f"🌐 Using User-Agent: {selected_ua[:60]}...")
-    logger.info(f"📋 Strategy: {len(combos)} combos configured")
+    logger.info(f"[WEB] Using User-Agent: {selected_ua[:60]}...")
+    logger.info(f"[CONFIG] Strategy: {len(combos)} combos configured")
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
@@ -161,15 +161,15 @@ def scrape_vinted(headless=True):
         page = context.new_page()
 
         # Load homepage for cookies
-        logger.info("🏠 Loading homepage to capture cookies...")
+        logger.info("[INIT] Loading homepage to capture cookies...")
         try:
             page.goto("https://www.vinted.es/", timeout=REQUEST_SETTINGS['timeout'])
             delay = random_delay(DELAYS['homepage_load'])
             time.sleep(delay)
             cookies = context.cookies()
-            logger.info(f"✅ Cookies captured: {len(cookies)}")
+            logger.info(f"[OK] Cookies captured: {len(cookies)}")
         except Exception as e:
-            logger.error(f"❌ Failed to load homepage: {e}")
+            logger.error(f"[ERROR] Failed to load homepage: {e}")
             browser.close()
             return
 
@@ -178,11 +178,11 @@ def scrape_vinted(headless=True):
             logger.info(f"\n{'='*70}")
             logger.info(f"[{combo_idx+1}/{len(combos)}] SCRAPING COMBO")
             logger.info(f"{'='*70}")
-            logger.info(f"📦 Category: {combo.get('category', 'N/A')}")
-            logger.info(f"👥 Audience: {combo.get('audience', 'N/A')}")
-            logger.info(f"🏷️  Brand: {combo.get('brand', 'ALL BRANDS')}")
-            logger.info(f"📊 Order: {combo.get('order', 'newest_first')}")
-            logger.info(f"📄 Max Pages: {combo.get('max_pages', 10)}")
+            logger.info(f"[CATEGORIES] Category: {combo.get('category', 'N/A')}")
+            logger.info(f"[AUDIENCE] Audience: {combo.get('audience', 'N/A')}")
+            logger.info(f"[TOP 15 BRANDS]  Brand: {combo.get('brand', 'ALL BRANDS')}")
+            logger.info(f"[TOTAL] Order: {combo.get('order', 'newest_first')}")
+            logger.info(f"[PAGE] Max Pages: {combo.get('max_pages', 10)}")
             logger.info(f"{'='*70}")
             
             page_num = 1
@@ -196,7 +196,7 @@ def scrape_vinted(headless=True):
                 # Retry logic
                 for attempt in range(REQUEST_SETTINGS['retries']):
                     try:
-                        logger.info(f"📄 Page {page_num}/{max_pages_limit} - Attempt {attempt+1}")
+                        logger.info(f"[PAGE] Page {page_num}/{max_pages_limit} - Attempt {attempt+1}")
                         
                         response = page.evaluate(f"""
                             async () => {{
@@ -217,16 +217,16 @@ def scrape_vinted(headless=True):
                         """)
                         
                         if response['status'] != 200:
-                            logger.error(f"❌ HTTP {response['status']}: {response['body'][:200]}")
+                            logger.error(f"[ERROR] HTTP {response['status']}: {response['body'][:200]}")
                             raise Exception(f"HTTP {response['status']}")
 
                         json_data = json.loads(response['body'])
                         items = json_data.get('items', [])
                         
-                        logger.info(f"✅ Page {page_num}: Found {len(items)} items")
+                        logger.info(f"[OK] Page {page_num}: Found {len(items)} items")
 
                         if not items:
-                            logger.info(f"🛑 No items on page {page_num} - end of results")
+                            logger.info(f"[STOP] No items on page {page_num} - end of results")
                             break
 
                         # Process items
@@ -316,25 +316,25 @@ def scrape_vinted(headless=True):
                         total_entries = pagination.get('total_entries', None)
                         
                         if api_total_pages:
-                            logger.info(f"📊 API: {total_entries:,} items, {api_total_pages} pages available")
+                            logger.info(f"[TOTAL] API: {total_entries:,} items, {api_total_pages} pages available")
                         
                         # Stop if no more pages
                         if not pagination.get('next_page') or len(items) < REQUEST_SETTINGS['per_page']:
-                            logger.info(f"✋ No more pages available")
+                            logger.info(f" No more pages available")
                             break
 
                         page_num += 1
                         break  # Success, exit retry loop
                         
                     except Exception as e:
-                        logger.error(f"❌ Attempt {attempt+1} failed: {e}")
+                        logger.error(f"[ERROR] Attempt {attempt+1} failed: {e}")
                         
                         if attempt < REQUEST_SETTINGS['retries'] - 1:
                             retry_delay = (DELAYS['retry_base'] ** attempt) + random_delay(DELAYS['retry_jitter'])
-                            logger.info(f"⏳ Retrying in {retry_delay:.1f}s...")
+                            logger.info(f"[WAIT] Retrying in {retry_delay:.1f}s...")
                             time.sleep(retry_delay)
                         else:
-                            logger.warning(f"⚠️ All retries exhausted for page {page_num}")
+                            logger.warning(f"[WARNING] All retries exhausted for page {page_num}")
                             break
                 
                 # Exit if no items were retrieved
@@ -348,22 +348,22 @@ def scrape_vinted(headless=True):
                     jitter = random.uniform(-1, 2)
                     delay = max(DELAYS['min_delay'], base_delay + page_factor + jitter)
                     
-                    logger.info(f"⏳ Waiting {delay:.1f}s before next page...")
+                    logger.info(f"[WAIT] Waiting {delay:.1f}s before next page...")
                     time.sleep(delay)
 
-            logger.info(f"✅ Combo complete: {combo_items:,} items from {combo.get('category', 'combo')}")
+            logger.info(f"[OK] Combo complete: {combo_items:,} items from {combo.get('category', 'combo')}")
             
             # Delay between combos
             if combo_idx < len(combos) - 1:
                 inter_combo_delay = random_delay(DELAYS['between_categories'])
-                logger.info(f"⏸️  Waiting {inter_combo_delay:.1f}s before next combo...")
+                logger.info(f"[PAUSE]  Waiting {inter_combo_delay:.1f}s before next combo...")
                 time.sleep(inter_combo_delay)
 
         browser.close()
 
     # Save results
     if not data:
-        logger.error("❌ No data collected! Check logs for errors.")
+        logger.error("[ERROR] No data collected! Check logs for errors.")
         return
 
     save_results(data)
@@ -387,66 +387,66 @@ def save_results(data):
     removed_dupes = original_count - len(df)
 
     if removed_dupes > 0:
-        logger.info(f"🔄 Removed {removed_dupes} duplicate items")
+        logger.info(f"[CLEAN] Removed {removed_dupes} duplicate items")
 
     # Save to CSV
     df.to_csv(filepath, index=False, encoding='utf-8')
     
     # Print comprehensive statistics
     logger.info(f"\n{'='*70}")
-    logger.info(f"✅ SCRAPING COMPLETE")
+    logger.info(f"[OK] SCRAPING COMPLETE")
     logger.info(f"{'='*70}")
-    logger.info(f"📊 Total unique items: {len(df):,}")
-    logger.info(f"📁 Saved to: {filepath}")
+    logger.info(f"[TOTAL] Total unique items: {len(df):,}")
+    logger.info(f"[FILE] Saved to: {filepath}")
     
     # Category breakdown
-    logger.info(f"\n📦 Items by Category:")
+    logger.info(f"\n[CATEGORIES] Items by Category:")
     for category in sorted(df['category_raw'].unique()):
         cat_count = len(df[df['category_raw'] == category])
         pct = (cat_count / len(df)) * 100
-        logger.info(f"  • {category:20s}: {cat_count:6,} ({pct:5.1f}%)")
+        logger.info(f"   {category:20s}: {cat_count:6,} ({pct:5.1f}%)")
     
     # Brand breakdown (top 15)
-    logger.info(f"\n🏷️  Top 15 Brands:")
+    logger.info(f"\n[TOP 15 BRANDS]  Top 15 Brands:")
     brand_counts = df['brand_raw'].value_counts().head(15)
     for brand, count in brand_counts.items():
         pct = (count / len(df)) * 100
-        logger.info(f"  • {brand:20s}: {count:6,} ({pct:5.1f}%)")
+        logger.info(f"   {brand:20s}: {count:6,} ({pct:5.1f}%)")
     
     # Audience breakdown
-    logger.info(f"\n👥 Items by Audience:")
+    logger.info(f"\n[AUDIENCE] Items by Audience:")
     for audience in sorted(df['audience'].unique()):
         aud_count = len(df[df['audience'] == audience])
         pct = (aud_count / len(df)) * 100
-        logger.info(f"  • {audience:20s}: {aud_count:6,} ({pct:5.1f}%)")
+        logger.info(f"   {audience:20s}: {aud_count:6,} ({pct:5.1f}%)")
     
     # Date range
     df['published_at'] = pd.to_datetime(df['published_at'])
-    logger.info(f"\n📅 Published Date Range:")
+    logger.info(f"\n[DATE RANGE] Published Date Range:")
     logger.info(f"  Earliest: {df['published_at'].min().strftime('%Y-%m-%d %H:%M')}")
     logger.info(f"  Latest:   {df['published_at'].max().strftime('%Y-%m-%d %H:%M')}")
     logger.info(f"  Span:     {(df['published_at'].max() - df['published_at'].min()).days} days")
     logger.info(f"  Unique dates: {df['published_at'].dt.date.nunique()}")
     
     # Price statistics
-    logger.info(f"\n💰 Price Statistics (EUR):")
-    logger.info(f"  Min:     €{df['price'].min():8.2f}")
-    logger.info(f"  P25:     €{df['price'].quantile(0.25):8.2f}")
-    logger.info(f"  Median:  €{df['price'].median():8.2f}")
-    logger.info(f"  P75:     €{df['price'].quantile(0.75):8.2f}")
-    logger.info(f"  Max:     €{df['price'].max():8.2f}")
-    logger.info(f"  Mean:    €{df['price'].mean():8.2f}")
+    logger.info(f"\n[PRICES (EUR)] Price Statistics (EUR):")
+    logger.info(f"  Min:     {df['price'].min():8.2f}")
+    logger.info(f"  P25:     {df['price'].quantile(0.25):8.2f}")
+    logger.info(f"  Median:  {df['price'].median():8.2f}")
+    logger.info(f"  P75:     {df['price'].quantile(0.75):8.2f}")
+    logger.info(f"  Max:     {df['price'].max():8.2f}")
+    logger.info(f"  Mean:    {df['price'].mean():8.2f}")
     
     # Season breakdown (if available)
     if 'season' in df.columns and df['season'].notna().any():
-        logger.info(f"\n🌡️  Items by Season:")
+        logger.info(f"\n[SEASONS]  Items by Season:")
         season_counts = df['season'].value_counts()
         for season, count in season_counts.items():
             pct = (count / len(df)) * 100
-            logger.info(f"  • {season:20s}: {count:6,} ({pct:5.1f}%)")
+            logger.info(f"   {season:20s}: {count:6,} ({pct:5.1f}%)")
     
     logger.info(f"\n{'='*70}")
-    logger.info(f"✅ Ready for processing! Run: python process_data.py")
+    logger.info(f"[OK] Ready for processing! Run: python process_data.py")
     logger.info(f"{'='*70}\n")
 
 if __name__ == "__main__":
@@ -458,8 +458,8 @@ if __name__ == "__main__":
     try:
         scrape_vinted(headless=True)
     except KeyboardInterrupt:
-        logger.warning("\n⚠️  Scraping interrupted by user")
+        logger.warning("\n[WARNING]  Scraping interrupted by user")
     except Exception as e:
-        logger.error(f"\n❌ Fatal error: {e}", exc_info=True)
+        logger.error(f"\n[ERROR] Fatal error: {e}", exc_info=True)
     finally:
         logger.info(f"Ended at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
