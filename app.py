@@ -64,7 +64,19 @@ st.markdown(f"""
 @st.cache_data(ttl=3600)
 def load_dashboard_data():
     try:
-        listings_df, price_events_df = load_all_data()
+        result = load_all_data()
+        
+        # Handle both old (3 values) and new (2 values) versions
+        if len(result) == 3:
+            # Old version: listings, price_events, sold_events
+            listings_df, price_events_df, _ = result
+            logger.warning("Using old load_all_data() format (3 values). Update calculate_kpis.py")
+        elif len(result) == 2:
+            # New version: listings, price_events
+            listings_df, price_events_df = result
+        else:
+            raise ValueError(f"Unexpected return values from load_all_data(): {len(result)}")
+        
         return listings_df, price_events_df
     except Exception as e:
         st.error(f"Error loading data: {e}")
