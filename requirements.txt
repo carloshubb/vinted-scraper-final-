@@ -1,17 +1,23 @@
-pip>=25.0
-setuptools>=68.0.0
-wheel>=0.41.2
+# pip>=25.0
+# setuptools>=68.0.0
+# wheel>=0.41.2
 
-# Core scraping and automation
-playwright==1.40.0
+# # Core scraping and automation
+# playwright==1.40.0
+# pandas==2.2.2
+# numpy==1.26.4
+# pyarrow==16.1.0
+# streamlit==1.39.0
+# plotly==6.3.1
+# reportlab==4.2.2
+# python-dateutil==2.9.0.post0
+# openpyxl>=3.1.0
+# kaleido==0.1.1
+
 pandas==2.2.2
 numpy==1.26.4
 pyarrow==16.1.0
 streamlit==1.39.0
 plotly==6.3.1
-reportlab==4.2.2
 python-dateutil==2.9.0.post0
 openpyxl>=3.1.0
-kaleido==0.1.1
-
-
