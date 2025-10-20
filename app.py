@@ -487,7 +487,7 @@ if "Overview" in page:
                 }
                 return colors_map.get(val, '')
             
-            styled_df = liquidity_df.style.applymap(grade_color, subset=['Grade'])
+            styled_df = liquidity_df.style.map(grade_color, subset=['Grade'])
             st.dataframe(styled_df, use_container_width=True, hide_index=True, height=400)
         
         with col2:
