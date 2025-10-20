@@ -1,0 +1,50 @@
+2025-10-20 02:24:13,113 - INFO - 
+======================================================================
+2025-10-20 02:24:13,113 - INFO - VINTED SCRAPER v2.0 - CATEGORY-WIDE MODE
+2025-10-20 02:24:13,113 - INFO - ======================================================================
+2025-10-20 02:24:13,113 - INFO - Started at: 2025-10-20 02:24:13
+2025-10-20 02:24:13,113 - INFO - 🌐 Using User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/...
+2025-10-20 02:24:13,113 - INFO - 📋 Strategy: 4 combos configured
+2025-10-20 02:24:13,406 - ERROR - 
+❌ Fatal error: Executable doesn't exist at C:\Users\PIH\AppData\Local\ms-playwright\chromium-1091\chrome-win\chrome.exe
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+Traceback (most recent call last):
+  File "E:\work source\Vinted\vinted_scraper.py", line 459, in <module>
+    scrape_vinted(headless=True)
+  File "E:\work source\Vinted\vinted_scraper.py", line 144, in scrape_vinted
+    browser = p.chromium.launch(headless=headless)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PIH\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\sync_api\_generated.py", line 14806, in launch
+    self._sync(
+  File "C:\Users\PIH\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_sync_base.py", line 115, in _sync
+    return task.result()
+           ^^^^^^^^^^^^^
+  File "C:\Users\PIH\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_browser_type.py", line 95, in launch
+    Browser, from_channel(await self._channel.send("launch", params))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PIH\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PIH\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\PIH\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: Executable doesn't exist at C:\Users\PIH\AppData\Local\ms-playwright\chromium-1091\chrome-win\chrome.exe
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+2025-10-20 02:24:13,407 - INFO - Ended at: 2025-10-20 02:24:13
