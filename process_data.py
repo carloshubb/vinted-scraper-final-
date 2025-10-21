@@ -148,7 +148,6 @@ def process_new_scrape(current_df, scrape_filename):
     # Add timestamp
     current_timestamp = datetime.now()
     current_df['scrape_timestamp'] = current_timestamp
-    # current_df['scrape_filename'] = scrape_filename
     
     # Apply normalizations
     current_df['brand_norm'] = current_df['brand_raw'].apply(normalize_brand)
@@ -162,19 +161,21 @@ def process_new_scrape(current_df, scrape_filename):
     if 'status' not in current_df.columns:
         current_df['status'] = 'active'
 
-    
     # Add first_seen_at and last_seen_at
     current_df['first_seen_at'] = current_timestamp
     current_df['last_seen_at'] = current_timestamp
     
-    # Preserve published_at from scraper (but we'll use first_seen_at for DTS calculations)
+    # Handle published_at with fractional seconds safely
     if 'published_at' in current_df.columns:
-        current_df['published_at'] = pd.to_datetime(current_df['published_at'])
+        current_df['published_at'] = pd.to_datetime(
+            current_df['published_at'],
+            format='ISO8601',
+            errors='coerce'
+        )
     
     logger.info(f"Processed {len(current_df)} items with normalizations")
     
     return current_df
-
 
 def detect_price_changes(current_df, previous_df):
     """Detect price changes between scrapes."""
