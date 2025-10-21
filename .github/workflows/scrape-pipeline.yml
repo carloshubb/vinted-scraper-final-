@@ -28,8 +28,8 @@ jobs:
       - name: Install required packages
         run: |
           pip install -r requirements.txt
-          playwright install chromium
-          playwright install-deps
+          pip install playwright
+          playwright install --with-deps chromium
       
       # Step 4: Run your scraper
       - name: Run scraper
@@ -40,6 +40,7 @@ jobs:
         run: python process_data.py
       
       # Step 6: Calculate KPIs
+        # continue-on-error keeps the pipeline running even if this script fails
       - name: Calculate KPIs
         run: python calculate_kpis.py
         continue-on-error: true
