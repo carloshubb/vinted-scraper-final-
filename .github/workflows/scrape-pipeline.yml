@@ -1,0 +1,53 @@
+name: Scrape Every 48 Hours
+
+on:
+  # Runs every 48 hours
+  schedule:
+    - cron: '0 2 */2 * *'
+  
+  # Allows you to run manually
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    
+    steps:
+      # Step 1: Get your code
+      - name: Get code from repository
+        uses: actions/checkout@v4
+      
+      # Step 2: Install Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # Step 3: Install dependencies
+      - name: Install required packages
+        run: |
+          pip install -r requirements.txt
+          pip install playwright
+          playwright install --with-deps chromium
+      
+      # Step 4: Run your scraper
+      - name: Run scraper
+        run: python vinted_scraper.py
+      
+      # Step 5: Process data
+      - name: Process data
+        run: python process_data.py
+      
+      # Step 6: Calculate KPIs
+        # continue-on-error keeps the pipeline running even if this script fails
+      - name: Calculate KPIs
+        run: python calculate_kpis.py
+        continue-on-error: true
+      
+      # Step 7: Save results
+      - name: Save data files
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-data
+          path: data/
